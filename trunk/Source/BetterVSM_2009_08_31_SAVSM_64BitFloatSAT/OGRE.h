@@ -15,7 +15,7 @@
 //-------------------------------------------------
 
 //model of the static objects-----------------------
-#define STATIC_OBJECT_SOURCE0 L"plane.x"
+#define STATIC_OBJECT_SOURCE0 L"plane_stone.x"
 #define STATIC_OBJECT_SOURCE1 L"pilar.x"
 //-------------------------------------------------
 

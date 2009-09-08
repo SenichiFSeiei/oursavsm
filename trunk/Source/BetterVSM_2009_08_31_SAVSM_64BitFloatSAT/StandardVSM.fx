@@ -480,13 +480,19 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 					float fPartLit = 0;
 					//Why this bias?
 					fPartLit = VARx / ( VARx + ( pixel_unit_z - Ex ) * ( pixel_unit_z - Ex ) );
-									
+					if( pixel_unit_z < Ex + DepthBiasDefault/* && pixel_unit_z * pixel_unit_z < moments0.y + DepthBiasDefault*DepthBiasDefault*/ )
+					{
+						return float4(1,1,1,1);
+					}
+					else
+						fPartLit = VARx / ( VARx + ( pixel_unit_z - Ex ) * ( pixel_unit_z - Ex ) );
+					//return float4( fPartLit, fPartLit, fPartLit, 1);
 					sum_depth +=  max( 0,( moments0.x - fPartLit * pixel_unit_z )/( 1 - fPartLit ));
 				}
-				curr_lt += float2(sub_light_size_01,0);
+				curr_lt.x += sub_light_size_01;
 			}
 			curr_lt.x = BLeft;
-			curr_lt += float2(0,sub_light_size_01);
+			curr_lt.y += sub_light_size_01;
 		}
 		sum_depth /= (light_per_row * light_per_row);
 
@@ -552,6 +558,8 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 			}
 			else
 				fPartLit += delta_sqr / ( delta_sqr + ( pixel_unit_z - mu ) * ( pixel_unit_z - mu ) );
+			//if( i==1&&j==0 )
+			//	return float4( fPartLit,fPartLit,fPartLit,1);
 			curr_lt.x += sub_light_size_01;
 		}
 		curr_lt.x = BLeft;

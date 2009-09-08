@@ -25,6 +25,7 @@
 #include "InputBuffer.h"
 #include "FullRTQuadRender.h"
 #include <S3UTSkybox.h>
+#include <Console.h>
 
 #define MAX_WCHAR_SIZE      260
 
@@ -280,6 +281,12 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
 
+    // DXUT will create and use the best device (either D3D9 or D3D10) 
+    // that is available on the system depending on which D3D callbacks are set below
+       //-------------------------------------------------------------------------
+       //Initialize test command window
+       //-------------------------------------------------------------------------
+       RedirectIOToConsole(L"output window");
     // DXUT will create and use the best device (either D3D9 or D3D10) 
     // that is available on the system depending on which D3D callbacks are set below
 
