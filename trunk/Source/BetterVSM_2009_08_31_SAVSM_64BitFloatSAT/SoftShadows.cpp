@@ -252,10 +252,6 @@ static void InitApp()
     g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
 
 
-    g_pSkyBox    = new S3UTSkybox();
-    g_pEnvMap    = new HDRCubeTexture;
-
-
 }
 static void RenderText()
 {
@@ -498,6 +494,9 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext)
 {
     HRESULT hr;
+
+	g_pSkyBox    = new S3UTSkybox();
+	g_pEnvMap    = new HDRCubeTexture;
 
     V_RETURN(DXUTSetMediaSearchPath(L"..\\Source\\SoftShadows"));
     V_RETURN(g_DialogResourceManager.OnD3D10CreateDevice(pDev10));
@@ -1244,5 +1243,7 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
     g_MeshLight.Destroy();
 
     g_pSkyBox->OnDestroyDevice();
+	SAFE_DELETE(g_pSkyBox);
 	g_pEnvMap->OnDestroyDevice();
+	SAFE_DELETE(g_pEnvMap);
 }
