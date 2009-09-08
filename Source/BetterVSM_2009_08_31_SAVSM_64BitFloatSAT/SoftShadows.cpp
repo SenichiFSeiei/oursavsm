@@ -246,14 +246,14 @@ static void InitApp()
     g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 35, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 35, iY += 25, 124, 22, false);
-	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Show Fan", 35, iY += 25, 124, 22, false);
+	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 35, iY += 25, 124, 22, false);
 
     g_SampleUI.AddStatic( IDC_LIGHT_SIZE_LABEL, L"Light source size:", 35, iY += 25, 125, 22 );
     g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
 
 
-	g_pSkyBox    = new S3UTSkybox();
-  g_pEnvMap    = new HDRCubeTexture;
+    g_pSkyBox    = new S3UTSkybox();
+    g_pEnvMap    = new HDRCubeTexture;
 
 
 }
@@ -642,7 +642,7 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 	}
 
 	//---------------------------------------
-    //g_pSkyBox->OnResizedSwapChain   ( pDev10, &g_pFloatBufferSurfaceDesc );
+    g_pSkyBox->OnResizedSwapChain   ( pDev10, &g_pFloatBufferSurfaceDesc );
 	g_pFloatBufferSurfaceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	g_pFloatBufferSurfaceDesc.Height = pBackBufferSurfaceDesc->Height;
 	g_pFloatBufferSurfaceDesc.Width  = pBackBufferSurfaceDesc->Width;
@@ -1171,26 +1171,25 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
     // render UI
+	RenderText();
     if (g_bShowUI)
     {
-
-        RenderText();
         g_SampleUI.OnRender(fElapsedTime);
         g_HUD.OnRender(fElapsedTime);
     }
 
-if( g_SampleUI.GetCheckBox( IDC_FRAME_DUMP )->GetChecked() )
-{
-  static int g_Frame = 0;
-  IDXGISwapChain* pSwapChain = DXUTGetDXGISwapChain();
-  ID3D10Texture2D* pRT;
-  pSwapChain->GetBuffer(0, __uuidof(pRT), reinterpret_cast<void**>(&pRT));
-  WCHAR filename[32];
-  StringCchPrintf(filename, 100, L"d:\\screenshot%.3d.bmp", g_Frame); 
-  D3DX10SaveTextureToFile(pRT, D3DX10_IFF_BMP, filename);
-  pRT->Release();
-  ++g_Frame;
-}
+	if( g_SampleUI.GetCheckBox( IDC_FRAME_DUMP )->GetChecked() )
+	{
+	  static int g_Frame = 0;
+	  IDXGISwapChain* pSwapChain = DXUTGetDXGISwapChain();
+	  ID3D10Texture2D* pRT;
+	  pSwapChain->GetBuffer(0, __uuidof(pRT), reinterpret_cast<void**>(&pRT));
+	  WCHAR filename[32];
+	  StringCchPrintf(filename, 100, L"DumpedImages\\screenshot%.3d.jpg", g_Frame); 
+	  D3DX10SaveTextureToFile(pRT, D3DX10_IFF_JPG, filename);
+	  pRT->Release();
+	  ++g_Frame;
+	}
 }
 //--------------------------------------------------------------------------------------
 // Release D3D10 resources created in OnD3D10ResizedSwapChain 
@@ -1199,7 +1198,7 @@ void CALLBACK OnD3D10SwapChainReleasing( void* pUserContext )
 {
     g_DialogResourceManager.OnD3D10ReleasingSwapChain();
     ssmap.OnWindowResize();
-	//g_pSkyBox->OnReleasingSwapChain();
+	g_pSkyBox->OnReleasingSwapChain();
 }
 //--------------------------------------------------------------------------------------
 // Release D3D10 resources created in OnD3D10CreateDevice 
