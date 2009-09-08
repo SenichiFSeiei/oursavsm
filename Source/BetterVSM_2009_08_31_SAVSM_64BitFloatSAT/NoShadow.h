@@ -203,7 +203,7 @@ void NoShadow::OnD3D10DestroyDevice( void* pUserContext )
 	SAFE_RELEASE(m_pAreaTextureRV);
 
 	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
-	delete m_pDepthBuffer;
+	SAFE_DELETE(m_pDepthBuffer);
 
 }
 

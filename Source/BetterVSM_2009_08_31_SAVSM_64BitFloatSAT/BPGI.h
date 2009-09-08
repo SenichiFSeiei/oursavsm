@@ -453,28 +453,28 @@ void BPGlobalIllumination::OnD3D10DestroyDevice( void* pUserContext )
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
 	m_pScreenPixelPos->OnD3D10DestroyDevice(pUserContext);
-	delete m_pScreenPixelPos;
+	SAFE_DELETE(m_pScreenPixelPos);
 	m_pScreenPixelPosHalf->OnD3D10DestroyDevice(pUserContext);
-	delete m_pScreenPixelPosHalf;
+	SAFE_DELETE(m_pScreenPixelPosHalf);
 	m_pScreenPixelPosQuarter->OnD3D10DestroyDevice(pUserContext);
-	delete m_pScreenPixelPosQuarter;
+	SAFE_DELETE(m_pScreenPixelPosQuarter);
 
 	m_pHSMKernel->OnD3D10DestroyDevice(pUserContext);
-	delete m_pHSMKernel;
+	SAFE_DELETE(m_pHSMKernel);
 	m_pHSMKernelHalf->OnD3D10DestroyDevice(pUserContext);
-	delete m_pHSMKernelHalf;
+	SAFE_DELETE(m_pHSMKernelHalf);
 	m_pHSMKernelQuarter->OnD3D10DestroyDevice(pUserContext);
-	delete m_pHSMKernelQuarter;
+	SAFE_DELETE(m_pHSMKernelQuarter);
 
 	m_pFloorVBufferOrigin->OnD3D10DestroyDevice(pUserContext);
 	m_pFloorVBufferHalf->OnD3D10DestroyDevice(pUserContext);
 	m_pFloorVBufferQuarter->OnD3D10DestroyDevice(pUserContext);
-	delete m_pFloorVBufferOrigin;
-	delete m_pFloorVBufferHalf;
-	delete m_pFloorVBufferQuarter;
+	SAFE_DELETE(m_pFloorVBufferOrigin);
+	SAFE_DELETE(m_pFloorVBufferHalf);
+	SAFE_DELETE(m_pFloorVBufferQuarter);
 
 	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
-	delete m_pDepthBuffer;
+	SAFE_DELETE(m_pDepthBuffer);
 
 }
 

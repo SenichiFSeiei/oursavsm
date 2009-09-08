@@ -1187,7 +1187,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	  WCHAR filename[32];
 	  StringCchPrintf(filename, 100, L"DumpedImages\\screenshot%.3d.jpg", g_Frame); 
 	  D3DX10SaveTextureToFile(pRT, D3DX10_IFF_JPG, filename);
-	  pRT->Release();
+	  SAFE_RELEASE(pRT);
 	  ++g_Frame;
 	}
 }
@@ -1209,10 +1209,12 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
 	{
 		g_pLightLumiBuffer[light_idx]->OnD3D10DestroyDevice(pUserContext);
+		SAFE_DELETE(g_pLightLumiBuffer[light_idx]);
 	}
 	for( int p_idx = 0 ; p_idx < 2 ; ++p_idx )
 	{
 		g_pPingpongBuffer[p_idx]->OnD3D10DestroyDevice(pUserContext);
+		SAFE_DELETE(g_pPingpongBuffer[p_idx]);
 	}
 
 
