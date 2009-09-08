@@ -69,8 +69,8 @@ static bool g_LightVary = false;
 static bool g_CameraMove = false;
 static bool g_LightMove = false;
 
-//HDRCubeTexture*               g_pEnvMap       = NULL; 
-//S3UTSkybox*                   g_pSkyBox       = NULL;
+HDRCubeTexture*               g_pEnvMap       = NULL; 
+S3UTSkybox*                   g_pSkyBox       = NULL;
 DXGI_SURFACE_DESC             g_pFloatBufferSurfaceDesc;
 #define MAX_PATH_STR                       512
 WCHAR  g_EnvMapFilePath[MAX_PATH_STR]; 
@@ -252,8 +252,8 @@ static void InitApp()
     g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
 
 
-	//g_pSkyBox    = new S3UTSkybox();
-    //g_pEnvMap    = new HDRCubeTexture;
+	g_pSkyBox    = new S3UTSkybox();
+  g_pEnvMap    = new HDRCubeTexture;
 
 
 }
@@ -511,9 +511,9 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
     LoadNewModel();
 
 	V_RETURN( DXUTFindDXSDKMediaFileCch( g_EnvMapFilePath, MAX_PATH_STR, g_DefaultEnvMapName[0] ) );
-    //g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
-    //g_pSkyBox->OnCreateDevice( pDev10 );
-    //g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
+    g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
+    g_pSkyBox->OnCreateDevice( pDev10 );
+    g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
 	g_pFloatBufferSurfaceDesc.SampleDesc.Count   = pBackBufferSurfaceDesc->SampleDesc.Count;
     g_pFloatBufferSurfaceDesc.SampleDesc.Quality = pBackBufferSurfaceDesc->SampleDesc.Quality;
 
@@ -1167,7 +1167,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	S3UTCamera& g_LCameraRef = g_LCamera[0];
 	//temporary code for test driving FullRTQuadRender
 	g_Final.m_pGBuffer = &g_GBuffer;
-
+	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
     // render UI
@@ -1242,6 +1242,6 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
     g_MeshScene.Destroy();
     g_MeshLight.Destroy();
 
-    //g_pSkyBox->OnDestroyDevice();
-	//g_pEnvMap->OnDestroyDevice();
+    g_pSkyBox->OnDestroyDevice();
+	g_pEnvMap->OnDestroyDevice();
 }
