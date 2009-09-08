@@ -193,9 +193,9 @@ void InputBuffer::OnD3D10DestroyDevice( void* pUserContext )
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	m_pInputAttributes->OnD3D10DestroyDevice(pUserContext);
-	delete m_pInputAttributes;
+	SAFE_DELETE(m_pInputAttributes);
 
 	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
-	delete m_pDepthBuffer;
+	SAFE_DELETE(m_pDepthBuffer);
 }
 

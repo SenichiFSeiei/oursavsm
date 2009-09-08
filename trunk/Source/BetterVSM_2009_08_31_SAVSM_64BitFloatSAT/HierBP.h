@@ -228,13 +228,13 @@ void HierBP::OnD3D10DestroyDevice( void* pUserContext )
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
 	m_pScreenPixelPos->OnD3D10DestroyDevice(pUserContext);
-	delete m_pScreenPixelPos;
+	SAFE_DELETE(m_pScreenPixelPos);
 
 	m_pHSMKernel->OnD3D10DestroyDevice(pUserContext);
-	delete m_pHSMKernel;
+	SAFE_DELETE(m_pHSMKernel);
 
 	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
-	delete m_pDepthBuffer;
+	SAFE_DELETE(m_pDepthBuffer);
 
 }
 

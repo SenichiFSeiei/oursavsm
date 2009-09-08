@@ -685,14 +685,14 @@ void SSMap::OnDestroy()
 		}
 	}
 
-    delete []m_pDepthMip2RTViews;
-    delete []m_pDepthMip2SRViews;
+    SAFE_DELETE_ARRAY(m_pDepthMip2RTViews);
+    SAFE_DELETE_ARRAY(m_pDepthMip2SRViews);
     
-	delete []m_pVSMMip2RTViews;
-    delete []m_pVSMMip2SRViews;
+	SAFE_DELETE_ARRAY(m_pVSMMip2RTViews);
+    SAFE_DELETE_ARRAY(m_pVSMMip2SRViews);
     
-	delete []m_pNBufferRTViews;
-    delete []m_pNBufferSRViews;
+	SAFE_DELETE_ARRAY(m_pNBufferRTViews);
+    SAFE_DELETE_ARRAY(m_pNBufferSRViews);
 
     SAFE_RELEASE(m_pOldRenderState); ///< we save rendering state here
     SAFE_RELEASE(m_pDepthLayout); ///< layout with only POSITION semantic in it

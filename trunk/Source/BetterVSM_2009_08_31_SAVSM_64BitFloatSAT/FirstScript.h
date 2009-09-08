@@ -29,7 +29,8 @@
 
 #define SHADOWMAP_CULL	D3D10_CULL_NONE
 
-#define DEFAULT_HDR_ENVMAP                 L"HDRRendering\\uffizi-large.hdr" 
+//#define DEFAULT_HDR_ENVMAP                 L"HDRRendering\\uffizi-large.hdr" 
+#define DEFAULT_HDR_ENVMAP                 L"HDRRendering\\uffizi_cross.hdr" 
 
     //Marching square with left hand law applied
                //-------------------------------     0     --     1    --     2    --      3     --     4    --     5     --      6    --      7    --      8    --      9    --     10    --		11   --		12    --	 13    --	  14    --	   15    --

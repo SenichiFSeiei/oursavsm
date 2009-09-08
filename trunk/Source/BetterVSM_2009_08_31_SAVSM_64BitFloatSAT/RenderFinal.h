@@ -19,6 +19,7 @@ public:
 	FullRTQuadRender *m_pScrQuadRender;
 
 	RenderFinal();
+	~RenderFinal();
 	HRESULT OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext);
 	void OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshScene,float g_fFilterSize,SSMap &ssmap,
 							S3UTCamera &g_CameraRef,S3UTCamera &g_LCameraRef,
@@ -33,6 +34,11 @@ RenderFinal::RenderFinal()
 {
 	m_pEffect = NULL;
 	m_pScrQuadRender = new FullRTQuadRender("FinalPresentPass");
+}
+
+RenderFinal::~RenderFinal()
+{
+	OnD3D10DestroyDevice(NULL);
 }
 
 HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
@@ -100,6 +106,7 @@ void RenderFinal::OnD3D10DestroyDevice( void* pUserContext )
 {
     SAFE_RELEASE(m_pEffect);
 	m_pScrQuadRender->OnD3D10DestroyDevice( pUserContext );
+	SAFE_DELETE(m_pScrQuadRender);
 }
 
 

@@ -219,6 +219,6 @@ void SilhouetteBP::OnD3D10DestroyDevice( void* pUserContext )
 	SAFE_RELEASE(m_pAreaTextureRV);
 
 	m_pHSMKernel->OnD3D10DestroyDevice(pUserContext);
-	delete m_pHSMKernel;
+	SAFE_DELETE(m_pHSMKernel);
 }
 

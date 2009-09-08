@@ -56,9 +56,8 @@ HDRCubeTexture::HDRCubeTexture()
 HDRCubeTexture::~HDRCubeTexture()
 {
     // Free the HDR-RGBE bitmap
-    delete [] m_data;
-
-    delete [] m_PowsOfTwo;
+    SAFE_DELETE_ARRAY(m_data);
+    SAFE_DELETE_ARRAY(m_PowsOfTwo);
 }
 
 //-----------------------------------------------------------------------------
@@ -210,7 +209,7 @@ HRESULT HDRCubeTexture::EncodeHDRTexture( DXGI_FORMAT format )
         }
     }
 
-    delete [] buffer;
+    SAFE_DELETE_ARRAY(buffer);
 
     // Create the resource and fill the mip chain
     D3D10_SHADER_RESOURCE_VIEW_DESC SRVDesc;
@@ -313,7 +312,7 @@ HRESULT HDRCubeTexture::CreateMipmappedStaggingRGBA32Texture( ){
         m_D3DDevice->UpdateSubresource( tempTexture, iSubResource, NULL, subResourceArray, face_width * pixelDepth, 0); 
     }
 
-    delete [] subResourceArray;
+    SAFE_DELETE_ARRAY(subResourceArray);
 
     // Create the resource and fill the mip chain
     D3D10_SHADER_RESOURCE_VIEW_DESC SRVDesc;
@@ -483,7 +482,7 @@ void HDRCubeTexture::ConvertRGBA32ToR11G11B10Array( unsigned int *pOut, float *p
 bool HDRCubeTexture::LoadHDRCubeTexture(WCHAR* filename)
 {
     if(m_data != NULL){
-        delete [] m_data;
+        SAFE_DELETE_ARRAY(m_data);
         m_data = NULL;
     }
 
