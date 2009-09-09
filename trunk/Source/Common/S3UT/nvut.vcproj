@@ -55,7 +55,7 @@
 				PrecompiledHeaderThrough="DXUT.h"
 				PrecompiledHeaderFile="$(IntDir)\$(ProjectName).pch"
 				WarningLevel="4"
-				WarnAsError="true"
+				WarnAsError="false"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
 			/>
