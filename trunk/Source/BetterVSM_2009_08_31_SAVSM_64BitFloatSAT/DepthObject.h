@@ -17,14 +17,16 @@ class DepthObject{
 public:
 
 	DepthObject( char *TechName );
-	~DepthObject(){};
 
 	HRESULT OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	HRESULT OnD3D10SwapChainResized( D3D10_TEXTURE2D_DESC desc, ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10FrameRender( S3UTMesh *MeshScene, ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
-	void	OnD3D10DestroyDevice( void* pUserContext );
+	void	OnD3D10DestroyDevice();
 	void	DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10  );
+	
+	~DepthObject();
+
 	void	Clear(ID3D10Device* pDev10);
 
 	ID3D10Texture2D				*m_pTexture;
@@ -47,6 +49,10 @@ DepthObject::DepthObject( char *TechName )
 	m_pDSView		 = NULL;
 	m_pLayout		 = NULL;
 }
+DepthObject::~DepthObject()
+{
+	//OnD3D10DestroyDevice();
+};
 
 HRESULT DepthObject::OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
 {
@@ -148,8 +154,10 @@ void	DepthObject::Clear(ID3D10Device* pDev10)
      pDev10->ClearDepthStencilView( m_pDSView, D3D10_CLEAR_DEPTH, 1.0, 0);
 }
 
-void	DepthObject::OnD3D10DestroyDevice( void* pUserContext )
+void	DepthObject::OnD3D10DestroyDevice()
 {
+	OnD3D10SwapChainReleasing(NULL);
+
 	SAFE_RELEASE( m_pLayout );
 }
 

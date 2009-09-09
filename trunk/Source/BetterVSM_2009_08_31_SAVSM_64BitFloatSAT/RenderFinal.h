@@ -19,13 +19,15 @@ public:
 	FullRTQuadRender *m_pScrQuadRender;
 
 	RenderFinal();
-	~RenderFinal();
 	HRESULT OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext);
 	void OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshScene,float g_fFilterSize,SSMap &ssmap,
 							S3UTCamera &g_CameraRef,S3UTCamera &g_LCameraRef,
 							ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice( void* pUserContext = NULL);
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	
+	~RenderFinal();
 
 	InputBuffer *m_pGBuffer;
 };
@@ -38,7 +40,7 @@ RenderFinal::RenderFinal()
 
 RenderFinal::~RenderFinal()
 {
-	OnD3D10DestroyDevice(NULL);
+	//OnD3D10DestroyDevice();
 }
 
 HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
@@ -58,6 +60,10 @@ HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFAC
 
 	return S_OK;
 
+}
+void	RenderFinal::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pScrQuadRender->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT RenderFinal::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -104,6 +110,8 @@ void RenderFinal::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshSce
 
 void RenderFinal::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
     SAFE_RELEASE(m_pEffect);
 	m_pScrQuadRender->OnD3D10DestroyDevice( pUserContext );
 	SAFE_DELETE(m_pScrQuadRender);

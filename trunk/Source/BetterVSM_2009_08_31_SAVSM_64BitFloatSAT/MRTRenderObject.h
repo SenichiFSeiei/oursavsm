@@ -26,7 +26,7 @@ class MRTRenderObject{
 public:
 
 	MRTRenderObject( char *TechName );
-	~MRTRenderObject(){};
+	~MRTRenderObject();
 
 	HRESULT OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	HRESULT OnD3D10SwapChainResized(	D3D10_TEXTURE2D_DESC par_Tex0desc,
@@ -46,7 +46,7 @@ public:
 									ID3D10Device* pDev10, 
 									double fTime, float fElapsedTime, void* pUserContext, float r=0,float g=0,float b=0,float a = 0 );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
-	void	OnD3D10DestroyDevice( void* pUserContext );
+	void	OnD3D10DestroyDevice( void* pUserContext = NULL );
 	void	DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10  );
 
 	ID3D10Texture2D				*m_pTexture0;
@@ -130,6 +130,10 @@ HRESULT MRTRenderObject::OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Devic
 	return S_OK;
 
 }
+MRTRenderObject::~MRTRenderObject()
+{
+	//OnD3D10DestroyDevice();
+};
 
 // Texture must be updated here, Because the Backbuffer changed, the texture must change accordingly
 HRESULT MRTRenderObject::OnD3D10SwapChainResized(	D3D10_TEXTURE2D_DESC par_Tex0desc,
@@ -309,6 +313,8 @@ void	MRTRenderObject::OnD3D10FrameRender(   ID3D10Effect *m_pEffect,
 
 void	MRTRenderObject::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
 	SAFE_RELEASE( m_pLayout );
 }
 

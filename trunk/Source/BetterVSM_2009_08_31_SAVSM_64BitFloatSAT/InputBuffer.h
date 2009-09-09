@@ -39,10 +39,10 @@ public:
 							double fTime, 
 							float fElapsedTime, 
 							void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice( void* pUserContext = NULL );
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
-
-
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	~InputBuffer();
 
 };
 
@@ -54,6 +54,10 @@ InputBuffer::InputBuffer()
 	m_pDepthBuffer = NULL;
 
 }
+InputBuffer::~InputBuffer()
+{
+	//OnD3D10DestroyDevice();
+};
 
 HRESULT InputBuffer::OnD3D10CreateDevice(	ID3D10Device *pDev10, 
 											const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, 
@@ -90,6 +94,11 @@ HRESULT InputBuffer::OnD3D10CreateDevice(	ID3D10Device *pDev10,
 	m_pDepthBuffer ->OnD3D10CreateDevice( m_pEffect,pDev10, pBackBufferSurfaceDesc, pUserContext);
 	return S_OK;
 
+}
+void	InputBuffer::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pInputAttributes->OnD3D10SwapChainReleasing( pUserContext );
+	m_pDepthBuffer->OnD3D10SwapChainReleasing( pUserContext );
 }
 
 HRESULT InputBuffer::OnD3D10SwapChainResized( ID3D10Device* pDev10, 
@@ -190,12 +199,14 @@ void InputBuffer::OnD3D10FrameRender(	bool par_RenderOgre,
 
 void InputBuffer::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
-	m_pInputAttributes->OnD3D10DestroyDevice(pUserContext);
+	m_pInputAttributes->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pInputAttributes);
 
-	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
+	m_pDepthBuffer->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pDepthBuffer);
 }
 

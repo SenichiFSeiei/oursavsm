@@ -43,8 +43,11 @@ public:
 							double fTime, 
 							float fElapsedTime, 
 							void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice();
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	
+	~SilhouetteBP();
 
 
 
@@ -57,6 +60,11 @@ SilhouetteBP::SilhouetteBP()
 	m_pAreaTextureRV = NULL;
 	m_pHSMKernel = NULL;
 	m_pShadowResult = NULL;
+}
+
+SilhouetteBP::~SilhouetteBP()
+{
+	//OnD3D10DestroyDevice();
 }
 
 HRESULT SilhouetteBP::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
@@ -86,6 +94,11 @@ HRESULT SilhouetteBP::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFA
 	
 	return S_OK;
 
+}
+void	SilhouetteBP::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
+	m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT SilhouetteBP::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -212,13 +225,18 @@ void SilhouetteBP::OnD3D10FrameRender(bool render_ogre,
 
 }
 
-void SilhouetteBP::OnD3D10DestroyDevice( void* pUserContext )
+void SilhouetteBP::OnD3D10DestroyDevice()
 {
+	OnD3D10SwapChainReleasing(NULL);
+
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
 
-	m_pHSMKernel->OnD3D10DestroyDevice(pUserContext);
+	m_pHSMKernel->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernel);
+	m_pShadowResult->OnD3D10DestroyDevice();
+	SAFE_DELETE(m_pShadowResult);
+
 }
 

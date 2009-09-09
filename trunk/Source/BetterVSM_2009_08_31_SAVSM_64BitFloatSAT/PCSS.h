@@ -40,9 +40,10 @@ public:
 							double fTime, 
 							float fElapsedTime, 
 							void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice();
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
-
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	~PCSS();
 };
 
 PCSS::PCSS()
@@ -51,6 +52,10 @@ PCSS::PCSS()
 	m_pMaxLayout = NULL;
 	m_pShadowResult = NULL;
 }
+PCSS::~PCSS()
+{
+	//OnD3D10DestroyDevice();
+};
 
 HRESULT PCSS::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
 {
@@ -71,6 +76,10 @@ HRESULT PCSS::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC 
 	
 	return S_OK;
 
+}
+void	PCSS::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT PCSS::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -190,9 +199,13 @@ void PCSS::OnD3D10FrameRender(bool render_ogre,
 
 }
 
-void PCSS::OnD3D10DestroyDevice( void* pUserContext )
+void PCSS::OnD3D10DestroyDevice( )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
+
+	m_pShadowResult->OnD3D10DestroyDevice();
 }
 

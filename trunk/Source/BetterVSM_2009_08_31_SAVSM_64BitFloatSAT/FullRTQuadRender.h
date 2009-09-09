@@ -30,7 +30,6 @@ class FullRTQuadRender{
 public:
 
 	FullRTQuadRender( char *TechName );
-	~FullRTQuadRender(){};
 
 	HRESULT OnD3D10CreateDevice( ID3D10Effect	*par_pEffect, ID3D10Device* par_pDev10, 
 								 const DXGI_SURFACE_DESC* par_pBackBufferSurfaceDesc, void* pUserContext );
@@ -45,9 +44,11 @@ public:
 							  double fTime, float fElapsedTime, void* pUserContext );
 	
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
-	void	OnD3D10DestroyDevice( void* pUserContext );
+	void	OnD3D10DestroyDevice( void* pUserContext = NULL );
 	void	DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10  );
 	void	SetUseMyRT( bool par_bUseMyRT ) { m_bUseMyRT = par_bUseMyRT; }
+	~FullRTQuadRender();
+
 
 	ID3D10Buffer				*m_pScreenQuadVB;
 	ID3D10Texture2D				*m_pTexture;
@@ -73,7 +74,10 @@ FullRTQuadRender::FullRTQuadRender( char *TechName )
 	m_pQuadLayout	 = NULL;
 	m_bUseMyRT	     = true;
 }
-
+FullRTQuadRender::~FullRTQuadRender()
+{
+	//OnD3D10DestroyDevice();
+}
 //Texture Description is not a necessary parameter for the creation of a Render Object. Therefore it is removed from 
 //the parameter list of the constructor of the class RenderObj. 
 HRESULT FullRTQuadRender::OnD3D10CreateDevice( ID3D10Effect	*par_pEffect, ID3D10Device* par_pDev10, 
@@ -220,10 +224,10 @@ void FullRTQuadRender::OnD3D10FrameRender(  ID3D10Effect *par_pEffect,
 											double fTime, float fElapsedTime, void* pUserContext )
 {
 
-	//Render Objects to RTs of the same size. If you intend to render different sized RTs special cares must be taken. 
+ 	 //Render Objects to RTs of the same size. If you intend to render different sized RTs special cares must be taken. 
 	 float ClearColor[4] = { 1, 1, 1, 1 };
      par_pDev10->ClearRenderTargetView(m_pRTView, ClearColor);
- 
+
 	 par_pDev10->IASetInputLayout( m_pQuadLayout );
 
 	 //m_pTechniqueName is used only for creating input layout
@@ -241,7 +245,7 @@ void FullRTQuadRender::OnD3D10FrameRender(  ID3D10Effect *par_pEffect,
 		 par_pDev10->OMSetRenderTargets(1, &m_pRTView, NULL);//Quad Render requires no depth stencil surface
 	 }
      ID3D10EffectShaderResourceVariable *pTexture = NULL;//m_pEffect->GetVariableByName("DiffuseTex")->AsShaderResource();
-	     
+  
 	 DrawFullScreenQuad( par_pDev10, pTech, m_TexDesc.Width, m_TexDesc.Height );
 
 	 par_pDev10->OMSetRenderTargets(1, &pOrigRTV, pOrigDSV);
@@ -250,6 +254,7 @@ void FullRTQuadRender::OnD3D10FrameRender(  ID3D10Effect *par_pEffect,
 
 void FullRTQuadRender::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(pUserContext);
 	SAFE_RELEASE( m_pQuadLayout );
 	SAFE_RELEASE( m_pScreenQuadVB );
 }

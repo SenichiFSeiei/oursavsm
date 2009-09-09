@@ -286,7 +286,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
        //-------------------------------------------------------------------------
        //Initialize test command window
        //-------------------------------------------------------------------------
-       RedirectIOToConsole(L"output window");
+    //RedirectIOToConsole(L"output window");
     // DXUT will create and use the best device (either D3D9 or D3D10) 
     // that is available on the system depending on which D3D callbacks are set below
 
@@ -500,7 +500,8 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 //--------------------------------------------------------------------------------------
 HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext)
 {
-    HRESULT hr;
+
+	    HRESULT hr;
 
 	g_pSkyBox    = new S3UTSkybox();
 	g_pEnvMap    = new HDRCubeTexture;
@@ -512,41 +513,12 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 
     g_SampleUI.GetSlider(IDC_LIGHT_SIZE)->SetValue((int)(g_fFilterSize * 200.0));
 	g_SampleUI.GetComboBox(IDC_SHADOW_ALGORITHM)->SetSelectedByIndex(ssmap.bAccurateShadow == true ? 0 : 1);
-    V_RETURN(D3DX10CreateSprite(pDev10, 512, &g_pSprite10));
 
-    LoadNewModel();
-
-	V_RETURN( DXUTFindDXSDKMediaFileCch( g_EnvMapFilePath, MAX_PATH_STR, g_DefaultEnvMapName[0] ) );
-    g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
-    g_pSkyBox->OnCreateDevice( pDev10 );
-    g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
-	g_pFloatBufferSurfaceDesc.SampleDesc.Count   = pBackBufferSurfaceDesc->SampleDesc.Count;
-    g_pFloatBufferSurfaceDesc.SampleDesc.Quality = pBackBufferSurfaceDesc->SampleDesc.Quality;
-
-
-	ssmap.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-
-    D3DXVECTOR3 vTmp = D3DXVECTOR3(1, 2, 3);
-    D3DXVec3Normalize(&g_vLightDir, &vTmp);
-
-    SAFE_RELEASE(g_pRenderState);
-    D3D10_RASTERIZER_DESC RasterizerState;
-    RasterizerState.FillMode = D3D10_FILL_SOLID;
-    RasterizerState.CullMode = D3D10_CULL_FRONT;
-    RasterizerState.FrontCounterClockwise = true;
-    RasterizerState.DepthBias = false;
-    RasterizerState.DepthBiasClamp = 0;
-    RasterizerState.SlopeScaledDepthBias = 0;
-    RasterizerState.DepthClipEnable = true;
-    RasterizerState.ScissorEnable = false;
-    RasterizerState.MultisampleEnable = false;
-    RasterizerState.AntialiasedLineEnable = false;
-    V(pDev10->CreateRasterizerState(&RasterizerState, &g_pRenderState));
+	g_BPGI.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+	g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 
 	g_ABP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_NoShadow.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_BPGI.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_BPMSSMKernel.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_PCSS.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
@@ -555,6 +527,10 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 	g_GBuffer.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_ScrQuadRender.OnD3D10CreateDevice(g_ABP.m_pEffect,pDev10,pBackBufferSurfaceDesc,pUserContext);
 
+	ssmap.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+
+
+    V_RETURN(D3DX10CreateSprite(pDev10, 512, &g_pSprite10));
 	{//must be after g_ABP create a device,because they uses the members of g_ABP
 		static const D3D10_INPUT_ELEMENT_DESC scenemeshlayout[] =
 		{
@@ -572,7 +548,36 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 		V_RETURN(pDev10->CreateInputLayout(scenemeshlayout, 3, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &g_pMaxLayout));
 	}
 
-//light management
+    LoadNewModel();
+
+	V_RETURN( DXUTFindDXSDKMediaFileCch( g_EnvMapFilePath, MAX_PATH_STR, g_DefaultEnvMapName[0] ) );
+    g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
+	g_pSkyBox->OnCreateDevice( pDev10 );
+    g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
+
+	g_pFloatBufferSurfaceDesc.SampleDesc.Count   = pBackBufferSurfaceDesc->SampleDesc.Count;
+    g_pFloatBufferSurfaceDesc.SampleDesc.Quality = pBackBufferSurfaceDesc->SampleDesc.Quality;
+
+
+
+    D3DXVECTOR3 vTmp = D3DXVECTOR3(1, 2, 3);
+    D3DXVec3Normalize(&g_vLightDir, &vTmp);
+
+    SAFE_RELEASE(g_pRenderState);
+    D3D10_RASTERIZER_DESC RasterizerState;
+    RasterizerState.FillMode = D3D10_FILL_SOLID;
+    RasterizerState.CullMode = D3D10_CULL_FRONT;
+    RasterizerState.FrontCounterClockwise = true;
+    RasterizerState.DepthBias = false;
+    RasterizerState.DepthBiasClamp = 0.1;
+    RasterizerState.SlopeScaledDepthBias = 0;
+    RasterizerState.DepthClipEnable = true;
+    RasterizerState.ScissorEnable = false;
+    RasterizerState.MultisampleEnable = false;
+    RasterizerState.AntialiasedLineEnable = false;
+    V(pDev10->CreateRasterizerState(&RasterizerState, &g_pRenderState));
+
+	//light management
 	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
 	{
 		g_pLightLumiBuffer[light_idx] = new RenderObject( "RenderScreenPixelPos" );
@@ -646,16 +651,12 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 	{
 		g_pPingpongBuffer[p_idx]->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
 	}
+    ssmap.OnWindowResize();
+	g_ScrQuadRender.OnD3D10SwapChainResized(rtDesc_scrpos,pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext);
+
 
 	//---------------------------------------
     g_pSkyBox->OnResizedSwapChain   ( pDev10, &g_pFloatBufferSurfaceDesc );
-	g_pFloatBufferSurfaceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	g_pFloatBufferSurfaceDesc.Height = pBackBufferSurfaceDesc->Height;
-	g_pFloatBufferSurfaceDesc.Width  = pBackBufferSurfaceDesc->Width;
-
-	rtDesc_scrpos.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;	
-	g_ScrQuadRender.OnD3D10SwapChainResized(rtDesc_scrpos,pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext);
-
     return hr;
 }
 //--------------------------------------------------------------------------------------
@@ -930,7 +931,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_GBuffer.OnD3D10FrameRender(	true, true, g_SampleUI, 
 									g_MeshScene, g_CameraRef, 
 									pDev10, fTime, fElapsedTime, pUserContext );
-
 // rendering a subdivided light
 	float scaled_half_light_size = (g_fFilterSize*LIGHT_SCALE_FACTOR);
 	float fStartPt = -scaled_half_light_size;
@@ -1117,36 +1117,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 		g_NoShadow.set_parameters( para,p_RTV,p_SRV,&light_color[light_idx] );
 		g_NoShadow.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
-		//render light
-		
-		{
-			D3DXMATRIX mTmp, mWorldView;
-			D3DXMatrixInverse(&mTmp, NULL, g_CameraRef.GetWorldMatrix());
-			D3DXMatrixMultiply(&mWorldView, &mTmp, g_CameraRef.GetViewMatrix());
-			D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, g_CameraRef.GetProjMatrix());
-
-			D3DXMATRIX mLightViewInv;
-			D3DXMatrixInverse(&mLightViewInv, NULL, g_LCameraRef.GetViewMatrix());
-			D3DXMATRIX mLightViewInvWorldViewProj;
-			D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
-			V(g_BPGI.m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
-			g_BPGI.m_pEffect->GetTechniqueByName("RenderNoShadows")->GetPassByIndex(0)->Apply(0);
-
-		    D3D10_RASTERIZER_DESC RasterizerState;
-			RasterizerState.FillMode = D3D10_FILL_SOLID;
-			RasterizerState.CullMode = D3D10_CULL_NONE;
-			RasterizerState.FrontCounterClockwise = true;
-			RasterizerState.DepthBias = false;
-			RasterizerState.DepthBiasClamp = 0;
-			RasterizerState.SlopeScaledDepthBias = 0;
-			RasterizerState.DepthClipEnable = true;
-			RasterizerState.ScissorEnable = false;
-			RasterizerState.MultisampleEnable = false;
-			RasterizerState.AntialiasedLineEnable = false;
-			V(pDev10->CreateRasterizerState(&RasterizerState, &g_pRenderState));
-
-
-		}
 	}
 	
 	if( ( light_idx + g_nNumLightSample * g_nNumLightSample ) % 2 == 0 )
@@ -1175,6 +1145,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Final.m_pGBuffer = &g_GBuffer;
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
+	
 
     // render UI
 	RenderText();
@@ -1203,7 +1174,17 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 void CALLBACK OnD3D10SwapChainReleasing( void* pUserContext )
 {
     g_DialogResourceManager.OnD3D10ReleasingSwapChain();
-    ssmap.OnWindowResize();
+	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
+	{
+		g_pLightLumiBuffer[light_idx]->OnD3D10SwapChainReleasing(pUserContext);
+	}
+	for( int p_idx = 0 ; p_idx < 2 ; ++p_idx )
+	{
+		g_pPingpongBuffer[p_idx]->OnD3D10SwapChainReleasing(pUserContext);
+	}
+	g_ScrQuadRender.OnD3D10SwapChainReleasing(pUserContext);
+	g_GBuffer.OnD3D10SwapChainReleasing(pUserContext);
+	g_Final.OnD3D10SwapChainReleasing(pUserContext);
 	g_pSkyBox->OnReleasingSwapChain();
 }
 //--------------------------------------------------------------------------------------
@@ -1211,44 +1192,40 @@ void CALLBACK OnD3D10SwapChainReleasing( void* pUserContext )
 //--------------------------------------------------------------------------------------
 void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 {
-	//light management
-	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
-	{
-		g_pLightLumiBuffer[light_idx]->OnD3D10DestroyDevice(pUserContext);
-		SAFE_DELETE(g_pLightLumiBuffer[light_idx]);
-	}
-	for( int p_idx = 0 ; p_idx < 2 ; ++p_idx )
-	{
-		g_pPingpongBuffer[p_idx]->OnD3D10DestroyDevice(pUserContext);
-		SAFE_DELETE(g_pPingpongBuffer[p_idx]);
-	}
-
-
-	//-----------------------------------------
-
-	g_ABP.OnD3D10DestroyDevice(pUserContext);
-	g_NoShadow.OnD3D10DestroyDevice(pUserContext);
-	g_BPGI.OnD3D10DestroyDevice(pUserContext);
-	g_HBP.OnD3D10DestroyDevice(pUserContext);
-	g_HEEBP.OnD3D10DestroyDevice(pUserContext);
-	g_StdVSM.OnD3D10DestroyDevice(pUserContext);
-	g_PCSS.OnD3D10DestroyDevice(pUserContext);
-	g_BPMSSMKernel.OnD3D10DestroyDevice(pUserContext);
-	g_Final.OnD3D10DestroyDevice(pUserContext);
-	ssmap.OnDestroy();
-	g_GBuffer.OnD3D10DestroyDevice(pUserContext);
-
     g_DialogResourceManager.OnD3D10DestroyDevice();
     g_D3DSettingsDlg.OnD3D10DestroyDevice();
-
     SAFE_RELEASE(g_pFont10);
     SAFE_RELEASE(g_pSprite10);
     SAFE_RELEASE(g_pRenderState);
     SAFE_RELEASE(g_pMaxLayout);
-
     g_MeshScene.Destroy();
     g_MeshLight.Destroy();
 
+	//light management
+	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
+	{
+		g_pLightLumiBuffer[light_idx]->OnD3D10DestroyDevice();
+		SAFE_DELETE(g_pLightLumiBuffer[light_idx]);
+	}
+
+	for( int p_idx = 0 ; p_idx < 2 ; ++p_idx )
+	{
+		g_pPingpongBuffer[p_idx]->OnD3D10DestroyDevice();
+		SAFE_DELETE(g_pPingpongBuffer[p_idx]);
+	}
+
+	g_ABP.OnD3D10DestroyDevice();
+	g_NoShadow.OnD3D10DestroyDevice();
+	g_BPGI.OnD3D10DestroyDevice();
+	g_HBP.OnD3D10DestroyDevice();
+	g_HEEBP.OnD3D10DestroyDevice();
+	g_StdVSM.OnD3D10DestroyDevice();
+	g_PCSS.OnD3D10DestroyDevice();
+	g_BPMSSMKernel.OnD3D10DestroyDevice();
+	g_Final.OnD3D10DestroyDevice();
+	g_GBuffer.OnD3D10DestroyDevice();
+	g_ScrQuadRender.OnD3D10DestroyDevice();
+	ssmap.OnDestroy();
     g_pSkyBox->OnDestroyDevice();
 	SAFE_DELETE(g_pSkyBox);
 	g_pEnvMap->OnDestroyDevice();
