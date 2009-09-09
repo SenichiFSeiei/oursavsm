@@ -86,7 +86,7 @@ void HDRCubeTexture::OnDestroyDevice()
 {
     SAFE_RELEASE( m_Texture );	
     SAFE_RELEASE( m_TextureRV );
-    //SAFE_RELEASE( m_StagingTexture );	
+    SAFE_RELEASE( m_StagingTexture );	
 }
 
 //-----------------------------------------------------------------------------
