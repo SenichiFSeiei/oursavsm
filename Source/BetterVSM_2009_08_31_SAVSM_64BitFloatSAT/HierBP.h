@@ -21,8 +21,11 @@ public:
 	void OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshScene,float g_fFilterSize,SSMap &ssmap,
 							S3UTCamera &g_CameraRef,S3UTCamera &g_LCameraRef,
 							ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice( void* pUserContext = NULL );
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	~HierBP();
+
 
 
 
@@ -38,6 +41,10 @@ HierBP::HierBP()
 	m_pHSMKernel = NULL;
 
 }
+HierBP::~HierBP()
+{
+	//OnD3D10DestroyDevice();
+};
 
 HRESULT HierBP::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
 {
@@ -76,10 +83,14 @@ HRESULT HierBP::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DES
 	m_pDepthBuffer = new DepthObject( "RenderDepth" );
 	m_pDepthBuffer->OnD3D10CreateDevice( m_pEffect,pDev10, pBackBufferSurfaceDesc, pUserContext);
 
-
-
 	return S_OK;
 
+}
+void	HierBP::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pScreenPixelPos->OnD3D10SwapChainReleasing(pUserContext);
+	m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
+	m_pDepthBuffer->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT HierBP::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -224,16 +235,18 @@ void HierBP::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshScene,fl
 
 void HierBP::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
-	m_pScreenPixelPos->OnD3D10DestroyDevice(pUserContext);
+	m_pScreenPixelPos->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pScreenPixelPos);
 
-	m_pHSMKernel->OnD3D10DestroyDevice(pUserContext);
+	m_pHSMKernel->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernel);
 
-	m_pDepthBuffer->OnD3D10DestroyDevice(pUserContext);
+	m_pDepthBuffer->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pDepthBuffer);
 
 }

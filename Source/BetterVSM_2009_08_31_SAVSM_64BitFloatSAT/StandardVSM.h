@@ -42,8 +42,10 @@ public:
 							double fTime, 
 							float fElapsedTime, 
 							void* pUserContext);
-	void OnD3D10DestroyDevice( void* pUserContext );
+	void OnD3D10DestroyDevice( void* pUserContext = NULL );
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
+	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	~StdVSM();
 
 
 
@@ -56,7 +58,10 @@ StdVSM::StdVSM()
 	m_pShadowResult = NULL;
 	m_bShaderChanged = false;
 }
-
+StdVSM::~StdVSM()
+{
+	//OnD3D10DestroyDevice();
+}
 HRESULT StdVSM::CreateShader(ID3D10Device *pDev10)
 {
 	HRESULT hr;
@@ -87,7 +92,10 @@ HRESULT StdVSM::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DES
 	return S_OK;
 
 }
-
+void StdVSM::OnD3D10SwapChainReleasing( void* pUserContext )
+{
+	m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
+}
 HRESULT StdVSM::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
 {
 	D3D10_TEXTURE2D_DESC rtDesc_scrpos =
@@ -199,8 +207,8 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc = DXUTGetDXGIBackBufferSurfaceDesc();
 	V(m_pEffect->GetVariableByName("fScreenWidth")->AsScalar()->SetFloat(pBackBufferSurfaceDesc->Width));
 	V(m_pEffect->GetVariableByName("fScreenHeight")->AsScalar()->SetFloat(pBackBufferSurfaceDesc->Height));
-
-
+	
+//releasing issue
 	pDev10->OMSetRenderTargets(1,&m_pRTV,NULL);
 	float ClearColor[4] = { 1, 1, 1, 1 };
 	pDev10->ClearRenderTargetView(m_pRTV, ClearColor);
@@ -213,6 +221,9 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 
 void StdVSM::OnD3D10DestroyDevice( void* pUserContext )
 {
+	OnD3D10SwapChainReleasing(NULL);
+
+	m_pShadowResult->OnD3D10DestroyDevice();
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 }

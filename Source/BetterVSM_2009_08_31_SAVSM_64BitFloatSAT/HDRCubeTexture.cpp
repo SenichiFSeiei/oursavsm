@@ -1,7 +1,5 @@
 //----------------------------------------------------------------------------------
 // File:   HDRCubeTexture.cpp
-// Author: Miguel Sainz
-// Email:  sdkfeedback@S3Graphics.com
 // 
 // Copyright (c) 2007 S3Graphics Corporation. All rights reserved.
 //
@@ -88,7 +86,7 @@ void HDRCubeTexture::OnDestroyDevice()
 {
     SAFE_RELEASE( m_Texture );	
     SAFE_RELEASE( m_TextureRV );
-    SAFE_RELEASE( m_StagingTexture );	
+    //SAFE_RELEASE( m_StagingTexture );	
 }
 
 //-----------------------------------------------------------------------------
@@ -140,8 +138,8 @@ HRESULT HDRCubeTexture::EncodeHDRTexture( DXGI_FORMAT format )
     // Create the final texture 
     D3D10_TEXTURE2D_DESC dstex;
 
-    dstex.Width              = m_StagingTextureDesc.Width;
-    dstex.Height             = m_StagingTextureDesc.Height;
+    dstex.Width              = min(4096,m_StagingTextureDesc.Width);
+    dstex.Height             = min(4096,m_StagingTextureDesc.Height);
     dstex.MipLevels          = m_StagingTextureDesc.MipLevels;
     dstex.ArraySize          = m_StagingTextureDesc.ArraySize;
     dstex.Format             = destFormat;

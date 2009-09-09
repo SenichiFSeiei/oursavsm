@@ -27,7 +27,6 @@ class RenderObject{
 public:
 
 	RenderObject( char *TechName );
-	~RenderObject(){};
 
 	HRESULT OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	HRESULT OnD3D10SwapChainResized( D3D10_TEXTURE2D_DESC desc, ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
@@ -41,8 +40,11 @@ public:
 									ID3D10Device* pDev10, 
 									double fTime, float fElapsedTime, void* pUserContext, float r=0,float g=0,float b=0,float a = 0 );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
-	void	OnD3D10DestroyDevice( void* pUserContext );
+	void	OnD3D10DestroyDevice();
 	void	DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10  );
+
+	~RenderObject();
+
 
 	ID3D10Texture2D				*m_pTexture;
 	D3D10_TEXTURE2D_DESC		 m_TexDesc;
@@ -50,7 +52,7 @@ public:
 	ID3D10RenderTargetView		*m_pRTView;
 	ID3D10ShaderResourceView	*m_pSRView;
 	ID3D10InputLayout			*m_pLayout;
-	ID3D10Effect				*m_pEffect;
+	ID3D10Effect				*m_pEffect;//do not need release, get from outside
 	char						*m_pTechniqueName;
 	D3D10_VIEWPORT				 m_Viewport;
 
@@ -64,10 +66,6 @@ RenderObject::RenderObject( char *TechName )
 	m_pRTView		 = NULL;
 	m_pSRView		 = NULL;
 	m_pLayout		 = NULL;
-
-
-
-
 }
 
 //Texture Description is not a necessary parameter for the creation of a Render Object. Therefore it is removed from 
@@ -100,6 +98,11 @@ HRESULT RenderObject::OnD3D10CreateDevice( ID3D10Effect	*pEffect, ID3D10Device* 
 	return S_OK;
 
 }
+
+RenderObject::~RenderObject()
+{
+	//OnD3D10DestroyDevice();
+};
 
 // Texture must be updated here, Because the Backbuffer changed, the texture must change accordingly
 HRESULT RenderObject::OnD3D10SwapChainResized( D3D10_TEXTURE2D_DESC desc, ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -195,9 +198,12 @@ void	RenderObject::OnD3D10FrameRender(   ID3D10Effect *m_pEffect,
 
 }
 
-void	RenderObject::OnD3D10DestroyDevice( void* pUserContext )
+void	RenderObject::OnD3D10DestroyDevice()
 {
+	OnD3D10SwapChainReleasing(NULL);
+
 	SAFE_RELEASE( m_pLayout );
+
 }
 
 void	RenderObject::DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10 )
