@@ -70,7 +70,7 @@ static bool g_LightVary = false;
 static bool g_CameraMove = false;
 static bool g_LightMove = false;
 
-HDRCubeTexture*               g_pEnvMap       = NULL; 
+//HDRCubeTexture*               g_pEnvMap       = NULL; 
 S3UTSkybox*                   g_pSkyBox       = NULL;
 DXGI_SURFACE_DESC             g_pFloatBufferSurfaceDesc;
 #define MAX_PATH_STR                       512
@@ -286,7 +286,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
        //-------------------------------------------------------------------------
        //Initialize test command window
        //-------------------------------------------------------------------------
-    //RedirectIOToConsole(L"output window");
+    RedirectIOToConsole(L"output window");
     // DXUT will create and use the best device (either D3D9 or D3D10) 
     // that is available on the system depending on which D3D callbacks are set below
 
@@ -504,7 +504,7 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 	    HRESULT hr;
 
 	g_pSkyBox    = new S3UTSkybox();
-	g_pEnvMap    = new HDRCubeTexture;
+	//g_pEnvMap    = new HDRCubeTexture;
 
     V_RETURN(DXUTSetMediaSearchPath(L"..\\Source\\SoftShadows"));
     V_RETURN(g_DialogResourceManager.OnD3D10CreateDevice(pDev10));
@@ -551,9 +551,9 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
     LoadNewModel();
 
 	V_RETURN( DXUTFindDXSDKMediaFileCch( g_EnvMapFilePath, MAX_PATH_STR, g_DefaultEnvMapName[0] ) );
-    g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
+    //g_pEnvMap->OnCreateDevice(pDev10, g_EnvMapFilePath, DXGI_FORMAT_R8G8B8A8_UNORM);
 	g_pSkyBox->OnCreateDevice( pDev10 );
-    g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
+   // g_pSkyBox->SetTexture( g_pEnvMap->m_TextureRV );
 
 	g_pFloatBufferSurfaceDesc.SampleDesc.Count   = pBackBufferSurfaceDesc->SampleDesc.Count;
     g_pFloatBufferSurfaceDesc.SampleDesc.Quality = pBackBufferSurfaceDesc->SampleDesc.Quality;
@@ -1228,6 +1228,6 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 	ssmap.OnDestroy();
     g_pSkyBox->OnDestroyDevice();
 	SAFE_DELETE(g_pSkyBox);
-	g_pEnvMap->OnDestroyDevice();
-	SAFE_DELETE(g_pEnvMap);
+	//g_pEnvMap->OnDestroyDevice();
+	//SAFE_DELETE(g_pEnvMap);
 }
