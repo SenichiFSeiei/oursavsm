@@ -45,6 +45,7 @@ static CDXUTDialog g_SampleUI;
 static ID3D10InputLayout *g_pMaxLayout = NULL;
 static D3DXVECTOR3 g_vLightDir;
 static ID3D10RasterizerState *g_pRenderState = NULL;
+static ID3D10DepthStencilState *g_pDSState = NULL; 
 //parameter
 static SSMap ssmap;
 static bool g_bShowUI = true;
@@ -577,6 +578,15 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
     RasterizerState.AntialiasedLineEnable = false;
     V(pDev10->CreateRasterizerState(&RasterizerState, &g_pRenderState));
 
+    SAFE_RELEASE(g_pDSState);
+    D3D10_DEPTH_STENCIL_DESC DSState;
+    ZeroMemory(&DSState, sizeof(DSState));
+    DSState.DepthEnable = true;
+    DSState.DepthWriteMask = D3D10_DEPTH_WRITE_MASK_ALL;
+    DSState.DepthFunc = D3D10_COMPARISON_LESS_EQUAL;
+    V(pDev10->CreateDepthStencilState(&DSState, &g_pDSState));
+
+
 	//light management
 	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
 	{
@@ -928,6 +938,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_fFilterSize = g_fFilterSizeCtrl;
 
 	// render GBuffer
+	pDev10->OMSetDepthStencilState(g_pDSState,0);
 	g_GBuffer.OnD3D10FrameRender(	true, true, g_SampleUI, 
 									g_MeshScene, g_CameraRef, 
 									pDev10, fTime, fElapsedTime, pUserContext );
@@ -1148,9 +1159,9 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	
 
     // render UI
-	RenderText();
     if (g_bShowUI)
     {
+		RenderText();
         g_SampleUI.OnRender(fElapsedTime);
         g_HUD.OnRender(fElapsedTime);
     }
@@ -1197,6 +1208,8 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
     SAFE_RELEASE(g_pFont10);
     SAFE_RELEASE(g_pSprite10);
     SAFE_RELEASE(g_pRenderState);
+    SAFE_RELEASE(g_pDSState);
+
     SAFE_RELEASE(g_pMaxLayout);
     g_MeshScene.Destroy();
     g_MeshLight.Destroy();
