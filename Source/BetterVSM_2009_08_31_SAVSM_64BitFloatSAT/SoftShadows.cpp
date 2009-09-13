@@ -26,6 +26,7 @@
 #include "FullRTQuadRender.h"
 #include <S3UTSkybox.h>
 #include <Console.h>
+#include "Widget3D.h"
 
 #define MAX_WCHAR_SIZE      260
 
@@ -33,6 +34,7 @@ static S3UTCamera g_Camera;
 
 //light management
 static S3UTCamera g_LCamera[NUM_LIGHT];
+static Widget3D g_Widget;
 
 static CD3DSettingsDlg g_D3DSettingsDlg;
 static CDXUTDialogResourceManager g_DialogResourceManager;
@@ -502,7 +504,7 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext)
 {
 
-	    HRESULT hr;
+	HRESULT hr;
 
 	g_pSkyBox    = new S3UTSkybox();
 	//g_pEnvMap    = new HDRCubeTexture;
@@ -530,6 +532,7 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 
 	ssmap.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 
+	g_Widget.OnD3D10CreateDevice( pDev10,pBackBufferSurfaceDesc,pUserContext );
 
     V_RETURN(D3DX10CreateSprite(pDev10, 512, &g_pSprite10));
 	{//must be after g_ABP create a device,because they uses the members of g_ABP
@@ -1157,6 +1160,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 	
+	g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
 
     // render UI
     if (g_bShowUI)
@@ -1241,6 +1245,7 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 	ssmap.OnDestroy();
     g_pSkyBox->OnDestroyDevice();
 	SAFE_DELETE(g_pSkyBox);
+	g_Widget.OnD3D10DestroyDevice();
 	//g_pEnvMap->OnDestroyDevice();
 	//SAFE_DELETE(g_pEnvMap);
 }
