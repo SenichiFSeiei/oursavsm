@@ -41,7 +41,7 @@
 #define LIGHT_COLOR	{LIGHT_COLOR0,LIGHT_COLOR1,LIGHT_COLOR2,LIGHT_COLOR3,LIGHT_COLOR4,LIGHT_COLOR5,LIGHT_COLOR6,LIGHT_COLOR7}
 // End   ---------------------  Light Color ------------------------------------
 
-#define LIGHT_ZN0		5
+#define LIGHT_ZN0		10
 #define LIGHT_ZN1		5
 #define LIGHT_ZN2		20
 #define LIGHT_ZN3		20
@@ -51,7 +51,7 @@
 #define LIGHT_ZN7		20
 #define LIGHT_ZNS {LIGHT_ZN0,LIGHT_ZN1,LIGHT_ZN2,LIGHT_ZN3,LIGHT_ZN4,LIGHT_ZN5,LIGHT_ZN6,LIGHT_ZN7}
 
-#define LIGHT_ZF_DELTA		60//zn is under control of user, this is only an incremental from Zn
+#define LIGHT_ZF_DELTA		40//zn is under control of user, this is only an incremental from Zn
 
 #define LIGHT_VIEW_ANGLE0 D3DX_PI*3/5
 #define LIGHT_VIEW_ANGLE1 D3DX_PI/5

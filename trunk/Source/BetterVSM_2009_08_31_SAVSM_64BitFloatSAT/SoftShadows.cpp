@@ -1159,7 +1159,8 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Final.m_pGBuffer = &g_GBuffer;
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-	
+
+	g_LCameraRef.SetProjParams(light_view_angle[0], 1.0, g_fLightZn, g_fLightZn + LIGHT_ZF_DELTA);
 	g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
 
     // render UI

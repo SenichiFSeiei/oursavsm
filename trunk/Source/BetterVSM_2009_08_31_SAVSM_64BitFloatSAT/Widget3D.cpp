@@ -125,10 +125,221 @@ void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S
 	SAFE_RELEASE(m_pRenderState);
 	
 }
+void Widget3D::DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+{
+	HRESULT hr;
+		//Draw Light Source
+	
+	D3DXMATRIX mTmp, mWorldView, mWorldViewProj;
+	D3DXMatrixInverse(&mTmp, NULL, par_CameraRef.GetWorldMatrix());
+	D3DXMatrixMultiply(&mWorldView, &mTmp, par_CameraRef.GetViewMatrix());
+	D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, par_CameraRef.GetProjMatrix());
+
+	D3DXMATRIX mLightViewInv;
+	D3DXMatrixInverse(&mLightViewInv, NULL, par_LCameraRef.GetViewMatrix());
+	D3DXMATRIX mLightViewInvWorldViewProj;
+	D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
+	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
+	//V(g_ABP.m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mWorldViewProj));
+	
+
+	D3D10_RASTERIZER_DESC RasterizerState;
+	RasterizerState.FillMode = D3D10_FILL_SOLID;
+	RasterizerState.CullMode = D3D10_CULL_NONE;
+	RasterizerState.FrontCounterClockwise = true;
+	RasterizerState.DepthBias = false;
+	RasterizerState.DepthBiasClamp = 0;
+	RasterizerState.SlopeScaledDepthBias = 0;
+	RasterizerState.DepthClipEnable = true;
+	RasterizerState.ScissorEnable = false;
+	RasterizerState.MultisampleEnable = false;
+	RasterizerState.AntialiasedLineEnable = false;
+	V(pDev10->CreateRasterizerState(&RasterizerState, &m_pRenderState));
+
+	pDev10->RSSetState(m_pRenderState);
+
+	ID3D10InputLayout *pVertexLayout;
+
+	D3D10_INPUT_ELEMENT_DESC layout[] =
+	{
+	  { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },  
+	};
+
+	D3D10_PASS_DESC PassDesc;
+	m_pEffect->GetTechniqueByName( "RenderAxis" )->GetPassByName("X")->GetDesc( &PassDesc );   
+	V(pDev10->CreateInputLayout( layout,1, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &pVertexLayout ));
+
+	float FilterSize = par_fFilterSize * 5;
+
+	SVertexTexcoords axisvertices[6] =
+	{
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( 2 * FilterSize, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( 0.0f, 2 * FilterSize, 0.0f ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 2 * FilterSize ) },
+	};
+
+	ID3D10Buffer* pVertexBuffer1 = NULL;
+
+	D3D10_BUFFER_DESC bd;
+	bd.Usage = D3D10_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof( SVertexTexcoords ) * 6;
+	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	bd.MiscFlags = 0;
+	D3D10_SUBRESOURCE_DATA InitData;
+	InitData.pSysMem = axisvertices;
+	V(pDev10->CreateBuffer( &bd, &InitData, &pVertexBuffer1 ));
+	
+	UINT Stride = sizeof( SVertexTexcoords );
+	UINT Offset = 0;
+	pDev10->IASetInputLayout(pVertexLayout);
+
+	m_pEffect->GetTechniqueByName("RenderAxis")->GetPassByName("X")->Apply(0);
+
+	pDev10->IASetVertexBuffers( 0, 1, &pVertexBuffer1, &Stride, &Offset );
+	pDev10->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_LINELIST  );
+	pDev10->Draw( 2, 0 );
+	
+	m_pEffect->GetTechniqueByName("RenderAxis")->GetPassByName("Y")->Apply(0);
+	pDev10->Draw( 2, 2 );
+
+	m_pEffect->GetTechniqueByName("RenderAxis")->GetPassByName("Z")->Apply(0);
+	pDev10->Draw( 2, 4 );
+
+	SAFE_RELEASE(pVertexLayout);
+	SAFE_RELEASE(pVertexBuffer1);
+	SAFE_RELEASE(m_pRenderState);
+	
+}
+
+void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+{
+	HRESULT hr;
+		//Draw Light Source
+	
+	D3DXMATRIX mTmp, mWorldView, mWorldViewProj;
+	D3DXMatrixInverse(&mTmp, NULL, par_CameraRef.GetWorldMatrix());
+	D3DXMatrixMultiply(&mWorldView, &mTmp, par_CameraRef.GetViewMatrix());
+	D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, par_CameraRef.GetProjMatrix());
+
+	D3DXMATRIX mLightViewInv;
+	D3DXMatrixInverse(&mLightViewInv, NULL, par_LCameraRef.GetViewMatrix());
+	D3DXMATRIX mLightViewInvWorldViewProj;
+	D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
+	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
+	//V(g_ABP.m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mWorldViewProj));
+	
+
+	D3D10_RASTERIZER_DESC RasterizerState;
+	RasterizerState.FillMode = D3D10_FILL_SOLID;
+	RasterizerState.CullMode = D3D10_CULL_NONE;
+	RasterizerState.FrontCounterClockwise = true;
+	RasterizerState.DepthBias = false;
+	RasterizerState.DepthBiasClamp = 0;
+	RasterizerState.SlopeScaledDepthBias = 0;
+	RasterizerState.DepthClipEnable = true;
+	RasterizerState.ScissorEnable = false;
+	RasterizerState.MultisampleEnable = false;
+	RasterizerState.AntialiasedLineEnable = false;
+	V(pDev10->CreateRasterizerState(&RasterizerState, &m_pRenderState));
+
+	pDev10->RSSetState(m_pRenderState);
+
+	ID3D10InputLayout *pVertexLayout;
+
+	D3D10_INPUT_ELEMENT_DESC layout[] =
+	{
+	  { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },  
+	};
+
+	D3D10_PASS_DESC PassDesc;
+	m_pEffect->GetTechniqueByName( "RenderFrustum" )->GetPassByIndex(0)->GetDesc( &PassDesc );   
+	V(pDev10->CreateInputLayout( layout,1, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &pVertexLayout ));
+
+	D3DXMATRIX mat_light_proj = *par_LCameraRef.GetProjMatrix();
+
+	float w = mat_light_proj._11;
+	float light_zn = par_LCameraRef.GetNearClip();
+	float light_zf = par_LCameraRef.GetFarClip();
+
+	float near_plane_width = 2*light_zn/w;
+	float far_plane_width = near_plane_width * light_zf / light_zn;
+
+
+	SVertexTexcoords frustumvertices[24] =
+	{
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( far_plane_width/2, far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( far_plane_width/2, -far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( -far_plane_width/2, -far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( 0.0f, 0.0f, 0.0f ) },
+	  { D3DXVECTOR3( -far_plane_width/2, far_plane_width/2, light_zf ) },
+	  
+	  { D3DXVECTOR3( near_plane_width/2, near_plane_width/2, light_zn ) },
+	  { D3DXVECTOR3( -near_plane_width/2, near_plane_width/2, light_zn ) },
+	  
+	  { D3DXVECTOR3( near_plane_width/2, near_plane_width/2, light_zn ) },
+	  { D3DXVECTOR3( near_plane_width/2, -near_plane_width/2, light_zn ) },
+	  
+	  { D3DXVECTOR3( -near_plane_width/2, -near_plane_width/2, light_zn ) },
+	  { D3DXVECTOR3( -near_plane_width/2, near_plane_width/2, light_zn ) },
+	  
+	  { D3DXVECTOR3( -near_plane_width/2, -near_plane_width/2, light_zn ) },
+	  { D3DXVECTOR3( near_plane_width/2, -near_plane_width/2, light_zn ) },
+	  
+	  { D3DXVECTOR3( far_plane_width/2, far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( -far_plane_width/2, far_plane_width/2, light_zf ) },
+	  
+	  { D3DXVECTOR3( far_plane_width/2, far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( far_plane_width/2, -far_plane_width/2, light_zf ) },
+	  
+	  { D3DXVECTOR3( -far_plane_width/2, -far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( -far_plane_width/2, far_plane_width/2, light_zf ) },
+	  
+	  { D3DXVECTOR3( -far_plane_width/2, -far_plane_width/2, light_zf ) },
+	  { D3DXVECTOR3( far_plane_width/2, -far_plane_width/2, light_zf ) },
+
+	};
+
+	ID3D10Buffer* pVertexBuffer1 = NULL;
+
+	D3D10_BUFFER_DESC bd;
+	bd.Usage = D3D10_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof( SVertexTexcoords ) * 24;
+	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	bd.MiscFlags = 0;
+	D3D10_SUBRESOURCE_DATA InitData;
+	InitData.pSysMem = frustumvertices;
+	V(pDev10->CreateBuffer( &bd, &InitData, &pVertexBuffer1 ));
+	
+	UINT Stride = sizeof( SVertexTexcoords );
+	UINT Offset = 0;
+	pDev10->IASetInputLayout(pVertexLayout);
+
+	m_pEffect->GetTechniqueByName("RenderFrustum")->GetPassByIndex(0)->Apply(0);
+
+	pDev10->IASetVertexBuffers( 0, 1, &pVertexBuffer1, &Stride, &Offset );
+	pDev10->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_LINELIST  );
+	pDev10->Draw( 24, 0 );
+	
+	SAFE_RELEASE(pVertexLayout);
+	SAFE_RELEASE(pVertexBuffer1);
+	SAFE_RELEASE(m_pRenderState);
+	
+}
+
 
 void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize )
 {
 	DrawLightSource( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
+	DrawAxis( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
+	DrawFrustum( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
 }
 
 void Widget3D::OnD3D10DestroyDevice()
