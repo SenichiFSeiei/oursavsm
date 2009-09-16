@@ -68,6 +68,9 @@ static FullRTQuadRender g_ScrQuadRender("FinalPass");
 static int ShadowAlgorithm = STD_VSM;
 static float g_fDepthBiasDefault = 0.1;
 static float g_fLightZn = 40;
+static float g_fCtrledLightZn = 10;//user controlled zn
+static float g_fCtrledLightZf = 100;
+static float g_fCtrledLightFov = D3DX_PI/2;
 static int g_nNumLightSample = 0;
 static bool g_LightVary = false;
 static bool g_CameraMove = false;
@@ -193,7 +196,11 @@ static void InitApp()
 
     
 	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light Zn", 35, iY += 25, 125, 22 );
-    g_SampleUI.AddSlider( IDC_LIGHT_ZN, 160, iY, 124, 22, 0, 100, 40 );
+    g_SampleUI.AddSlider( IDC_LIGHT_ZN, 160, iY, 124, 22, 0, 100, 50 );
+	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light Zf", 35, iY += 25, 125, 22 );
+    g_SampleUI.AddSlider( IDC_LIGHT_ZF, 160, iY, 124, 22, 0, 100, 90 );
+	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light FOV", 35, iY += 25, 125, 22 );
+    g_SampleUI.AddSlider( IDC_LIGHT_FOV, 160, iY, 124, 22, 0, 100, 50 );
 
 	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"NumLightSample", 35, iY += 25, 125, 22 );
 	g_SampleUI.AddSlider(IDC_NUM_LIGHT_SAMPLE, 160, iY, 124, 22, 0, 16, 0 );
@@ -439,7 +446,13 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
 		ShadowAlgorithm = ((CDXUTComboBox*)pControl)->GetSelectedIndex();
         break;
 	case IDC_LIGHT_ZN:
-		g_fLightZn = 2*(float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue();
+		g_fCtrledLightZn = (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/5;
+		break;
+	case IDC_LIGHT_ZF:
+		g_fCtrledLightZf = (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+10;
+		break;
+	case IDC_LIGHT_FOV:
+		g_fCtrledLightFov = (float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/100;
 		break;
 	case IDC_fDefaultDepthBias:
 		g_fDefaultDepthBias = (float)g_SampleUI.GetSlider(IDC_fDefaultDepthBias)->GetValue()/4000.0;
@@ -1010,14 +1023,14 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 			
 			g_MeshScene.set_parameters( render_ogre, render_scene, render_fan, false );
 			S3UTCamera& g_LCameraRef = local_cam;
-			g_fLightZn = light_ZNS[0];
+			g_fLightZn = g_fCtrledLightZn;//light_ZNS[0];
 			D3DXMATRIX mLightView;
 			// here we compute light viewprojection so that light oversees the whole scene
 			D3DXMATRIX mTranslate;
 
 			D3DXMatrixInverse(&mTranslate, NULL, g_LCameraRef.GetWorldMatrix());
 			D3DXMatrixMultiply(&mLightView, &mTranslate, g_LCameraRef.GetViewMatrix());
-			g_LCameraRef.SetProjParams(light_view_angle[0], 1.0, g_fLightZn, g_fLightZn + LIGHT_ZF_DELTA);
+			g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fLightZn, g_fCtrledLightZf);
 	
 			unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BDUMP_SHADOWMAP)->GetChecked();
 			ssmap.Render(pDev10, &g_MeshScene, g_LCameraRef,fTime,fElapsedTime,iTmp);
@@ -1160,7 +1173,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
-	g_LCameraRef.SetProjParams(light_view_angle[0], 1.0, g_fLightZn, g_fLightZn + LIGHT_ZF_DELTA);
+	g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
 
     // render UI
