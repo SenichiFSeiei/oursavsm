@@ -201,6 +201,9 @@ static void InitApp()
     g_SampleUI.AddSlider( IDC_LIGHT_ZF, 160, iY, 124, 22, 0, 100, 90 );
 	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light FOV", 35, iY += 25, 125, 22 );
     g_SampleUI.AddSlider( IDC_LIGHT_FOV, 160, iY, 124, 22, 0, 100, 50 );
+    g_SampleUI.AddStatic( IDC_LIGHT_SIZE_LABEL, L"Light source size:", 35, iY += 25, 125, 22 );
+    g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
+
 
 	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"NumLightSample", 35, iY += 25, 125, 22 );
 	g_SampleUI.AddSlider(IDC_NUM_LIGHT_SAMPLE, 160, iY, 124, 22, 0, 16, 0 );
@@ -253,15 +256,13 @@ static void InitApp()
     g_SampleUI.AddCheckBox( IDC_BTEXTURED, L"Enable Texturing", 35, iY += 25, 124, 22, false);
 	g_SampleUI.AddCheckBox( IDC_SHOW_3DWIDGET, L"Show 3D Widget", 150, iY, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_BMOVECAMERA, L"Move Camera", 35, iY += 25, 124, 22, true);
+	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 35, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 35, iY += 25, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 35, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 35, iY += 25, 124, 22, false);
-	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 35, iY += 25, 124, 22, false);
 
-    g_SampleUI.AddStatic( IDC_LIGHT_SIZE_LABEL, L"Light source size:", 35, iY += 25, 125, 22 );
-    g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
 
 
 }
