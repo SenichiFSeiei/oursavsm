@@ -251,6 +251,7 @@ static void InitApp()
 	g_SampleUI.AddSlider(IDC_fDepthBiasObject0, 160, iY, 124, 22, 0, 100, 40 );
 
     g_SampleUI.AddCheckBox( IDC_BTEXTURED, L"Enable Texturing", 35, iY += 25, 124, 22, false);
+	g_SampleUI.AddCheckBox( IDC_SHOW_3DWIDGET, L"Show 3D Widget", 150, iY, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_BMOVECAMERA, L"Move Camera", 35, iY += 25, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 35, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 35, iY += 25, 124, 22, true);
@@ -1174,7 +1175,9 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
 	g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
-	g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
+	
+	if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
+		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
 
     // render UI
     if (g_bShowUI)
