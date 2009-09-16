@@ -32,6 +32,8 @@
 
 #define IDC_COMMON_LABEL 28
 #define IDC_NUM_LIGHT_SAMPLE 30
+#define IDC_LIGHT_ZF 31
+#define IDC_LIGHT_FOV 32
 
 #define IDC_STATIC 100
 #define IDC_ANIMATE 101
