@@ -156,8 +156,9 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 
 	D3DXMatrixMultiply(&ssmap.mLightViewProj, &mLightView, &ssmap.mLightProj);
     
-    V(m_pEffect->GetVariableByName("fLightZn")->AsScalar()->SetFloat(m_par.fLightZn));
-	
+    V(m_pEffect->GetVariableByName("fLightZf")->AsScalar()->SetFloat(g_LCameraRef.GetFarClip()));
+	V(m_pEffect->GetVariableByName("fLightZn")->AsScalar()->SetFloat(g_LCameraRef.GetNearClip()));
+
     V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightViewProj));
     V(m_pEffect->GetVariableByName("mLightView")->AsMatrix()->SetMatrix((float *)&mLightView));
 	V(m_pEffect->GetVariableByName("mLightProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightProj));

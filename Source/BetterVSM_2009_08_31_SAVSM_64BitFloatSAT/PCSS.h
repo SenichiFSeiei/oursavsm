@@ -25,8 +25,10 @@ public:
 	ID3D10Effect *m_pEffect;
 	ID3D10InputLayout *m_pMaxLayout;
 	FullRTQuadRender *m_pShadowResult;
+	bool m_bShaderChanged;
 
 	PCSS();
+	HRESULT CreateShader(ID3D10Device *pDev10);
 	HRESULT OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext);
 	void OnD3D10FrameRender(bool render_ogre, 
 							bool render_scene, 
@@ -51,13 +53,14 @@ PCSS::PCSS()
 	m_pEffect = NULL;
 	m_pMaxLayout = NULL;
 	m_pShadowResult = NULL;
+	m_bShaderChanged = false;
 }
 PCSS::~PCSS()
 {
 	//OnD3D10DestroyDevice();
 };
 
-HRESULT PCSS::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
+HRESULT PCSS::CreateShader(ID3D10Device *pDev10)
 {
 	HRESULT hr;
 
@@ -65,11 +68,22 @@ HRESULT PCSS::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC 
     WCHAR str[MAX_PATH];
     V_RETURN(DXUTFindDXSDKMediaFileCch(str, MAX_PATH, (PCSS_EFFECT_FILE_NAME) ));
     ID3D10Blob *pErrors;
+	SAFE_RELEASE( m_pEffect );
     if (D3DX10CreateEffectFromFile(str, NULL, NULL, "fx_4_0", D3D10_SHADER_DEBUG|D3D10_SHADER_SKIP_OPTIMIZATION, 0, pDev10, NULL, NULL, &m_pEffect, &pErrors, &hr) != S_OK)
     {
         MessageBoxA(NULL, (char *)pErrors->GetBufferPointer(), "Compilation error", MB_OK);
         exit(0);
     }
+	
+	return S_OK;
+
+}
+
+HRESULT PCSS::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
+{
+	HRESULT hr;
+
+	CreateShader( pDev10 );
 	
 	m_pShadowResult = new FullRTQuadRender("SSMBackprojection");
 	m_pShadowResult->OnD3D10CreateDevice(m_pEffect,pDev10,pBackBufferSurfaceDesc,pUserContext);
@@ -120,6 +134,11 @@ void PCSS::OnD3D10FrameRender(bool render_ogre,
 											  )
 {
 	HRESULT hr;
+	if( m_bShaderChanged )
+	{
+		CreateShader(pDev10);
+		m_bShaderChanged = false;
+	}
     D3DXMATRIX mTmp, mWorldView, mWorldViewProj, mWorldViewInv;
     D3DXMatrixInverse(&mTmp, NULL, g_CameraRef.GetWorldMatrix());
     D3DXMatrixMultiply(&mWorldView, &mTmp, g_CameraRef.GetViewMatrix());
@@ -137,9 +156,10 @@ void PCSS::OnD3D10FrameRender(bool render_ogre,
 
 	D3DXMatrixMultiply(&ssmap.mLightViewProj, &mLightView, &ssmap.mLightProj);
     
-    V(m_pEffect->GetVariableByName("fLightZn")->AsScalar()->SetFloat(m_par.fLightZn));
-	
-    V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightViewProj));
+	V(m_pEffect->GetVariableByName("fLightZf")->AsScalar()->SetFloat(g_LCameraRef.GetFarClip()));
+	V(m_pEffect->GetVariableByName("fLightZn")->AsScalar()->SetFloat(g_LCameraRef.GetNearClip()));	
+    
+	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightViewProj));
     V(m_pEffect->GetVariableByName("mLightView")->AsMatrix()->SetMatrix((float *)&mLightView));
 	V(m_pEffect->GetVariableByName("mLightProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightProj));
 

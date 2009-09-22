@@ -8,7 +8,7 @@
 //
 //----------------------------------------------------------------------------------
 //#define FIX_KERNEL
-#define GAUSSIAN_SAMPLE
+//#define GAUSSIAN_SAMPLE
 #include "DeferredShading.fxh"
 #include "IntSATUtil.fxh"
 #include "CommonDef.h"
@@ -49,8 +49,9 @@ cbuffer cb0 : register(b0)
     float4 spec_clr_hel  = {1,1,1,1};
     float4 spec_clr_stone = {1,1,1,1};
     float4 spec_clr_floor = {1,1,1,1};
-    float DepthBiasDefault = 0.005;
+    float DepthBiasDefault = 0.05;
     float fLightZn;
+    float fLightZf;
     float fScreenWidth;
     float fScreenHeight;
     float fLumiFactor;
@@ -187,7 +188,6 @@ float4 phong_shading( float3 light_space_pos, float3 light_space_camera_pos, flo
 
 float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
 {
-	float depth_bias = 0.01;
 	float4 vLightPos = TexPosInWorld.Load(int3(vPos.x-0.5,vPos.y-0.5,0));	
 	vLightPos = mul( float4(vLightPos.xyz,1), mLightView );
 	
@@ -195,17 +195,19 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 	float2 ShadowTexC = ( vPosLight.xy/vPosLight.w ) * 0.5 + float2( 0.5, 0.5 ) ;
 	ShadowTexC.y = 1.0 - ShadowTexC.y;
 	
+	float tmp = TexDepthMap.SampleLevel( PointSampler, ShadowTexC,0 );
+	
 	if( ShadowTexC.x > 1.0 || ShadowTexC.x < 0.0  || ShadowTexC.y > 1.0 || ShadowTexC.y < 0.0 )
 		return float4( 1,1,1,1 );
 	
 	//---------------------------------------------------------------------------------
 	float  Zn = fLightZn;
-	float  Zf = fLightZn + LIGHT_ZF_DELTA;
+	float  Zf = fLightZf;
 	float  w = vPosLight.w,
 		   x = vPosLight.x,
 		   y = vPosLight.y;
 	float pixel_unit_z = vPosLight.z/vPosLight.w;
-	
+
 //calculate the filter kernel -------------------------------------------------------------------------------------
 	float  LightSize = fFilterSize;
 	float  scale = ( w - Zn )/w;
@@ -217,14 +219,13 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 		     
 	float  LightWidthPersNorm  = LightWidthPers /NpWidth,
 		   LightHeightPersNorm = LightHeightPers/NpHeight;
-		   
+
+	//top is smaller than bottom		   
 	float  BLeft   = max( x/w-LightWidthPersNorm,-1) * 0.5 + 0.5,
 		   BRight  = min( x/w+LightWidthPersNorm,1) * 0.5 + 0.5,
-		   BBottom = 1 -( min( y/w+LightHeightPersNorm,1) * 0.5 + 0.5 ),
-		   BTop    = 1 -( max( y/w-LightHeightPersNorm,-1) * 0.5 + 0.5 ); 
+		   BTop    = 1 -( min( y/w+LightHeightPersNorm,1) * 0.5 + 0.5 ),
+		   BBottom = 1 -( max( y/w-LightHeightPersNorm,-1) * 0.5 + 0.5 ); 
 		   
-	float radius_in_pixel = ( BRight - BLeft ) * DEPTH_RES / 2;
-	float3  center_coord = float3( floor( ShadowTexC * DEPTH_RES ) + float2(0.5,0.5), 0 );	   
 	float	T_LightWidth, 
 			T_LightHeight,
 			S_LightWidth ,
@@ -232,49 +233,53 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 			S_LightWidthNorm = LightWidthPersNorm, 
 			S_LightHeightNorm = LightHeightPersNorm;
 	
-	float2	Depth1,
-			Depth2,
-			Depth3,
-			Depth4;
-			
-	float sum_depth = 0,
-		  num_occlu = 0;
-
-#ifdef GAUSSIAN_SAMPLE
-	float2 instant_off = {0.1,0.1};
-	for( uint i = 0; i < depth_sample_num; ++i )
+	float Zmin,Zmax;
+	float sum_depth = 0;
+	float num_occ = 0;
 	{
-		float2 offset = Poisson64[i%64] + instant_off * (i/64);
-		int2   cur_sample = center_coord + radius_in_pixel * offset;
+		float fPartLit = 0;
+		float  rescale = 1/g_NormalizedFloatToSATUINT;
+		float2 moments = {0.0,0.0};
+		float2 moments0, moments1, moments2, moments3;
 		
-		float depth = TexDepthMap.Load( int3( cur_sample, 0 ) ); 
-		if( depth < pixel_unit_z && depth>0.00001 )
+		int   light_per_row = 20;
+		float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+		
+		float2 curr_lt = float2( BLeft, BTop );
+		float unocc_part = 0, sum_ex = 0, sum_varx = 0;
+		for( int i = 0; i<light_per_row; ++i )
 		{
-			sum_depth += depth;
-			num_occlu += 1.0;
-		}
-
-	}
-#else
-	for( int v = -radius_in_pixel; v < radius_in_pixel; v += 2 )
-	{
-		for( int u = -radius_in_pixel; u < radius_in_pixel; u += 2 )
-		{
-			float depth = TexDepthMap.Load( int3(center_coord) + int3( u, v, 0 ) );	
-			if( depth < pixel_unit_z && depth>0.00001 )
+			for( int j = 0; j<light_per_row; ++j )
 			{
-				sum_depth += depth;
-				num_occlu += 1.0;
+
+				float  curr_depth = TexDepthMap.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
+				if( curr_depth < pixel_unit_z - DepthBiasDefault )
+				{
+					sum_depth += curr_depth;
+					num_occ += 1.0;
+				}
+				curr_lt.x += sub_light_size_01;
 			}
+			curr_lt.x = BLeft;
+			curr_lt.y += sub_light_size_01;
 		}
+		if( num_occ == 0 )
+			return float4(1,1,1,1);
+		sum_depth /= num_occ;
+		//---------------------------
+		
+		//The bias is necessary due to the numerical precision. Sometimes when the occluder is very close to the receiver
+		//although the occluder is slightly nearer to the light, the precision loss makes it equally distant to the light, or worse
+		//makes it farther
+		//A second thought, you may want to check the Cheveshev Inequality Proof for the root of this bias
+		[branch]if( sum_depth >= pixel_unit_z)
+			return float4(1,1,1,1);
+			
+		
 	}
-#endif
-	if( num_occlu == 0 ) return float4(1,1,1,1);
-	sum_depth /= num_occlu;
-	
 	
 	float ZminPers = sum_depth;
-	float Zmin = -( Zf * Zn ) / ( ( Zf - Zn ) * ( ZminPers - Zf / ( Zf - Zn ) ) );
+	Zmin = -( Zf * Zn ) / ( ( Zf - Zn ) * ( ZminPers - Zf / ( Zf - Zn ) ) );
 
 	T_LightWidth  = ( w - Zmin ) * ( LightSize  ) / w,
 	T_LightHeight = ( w - Zmin ) * ( LightSize ) / w,
@@ -286,30 +291,49 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 		
 	BLeft   = saturate(max( x/w-S_LightWidthNorm,-1) * 0.5 + 0.5);
 	BRight  = saturate(min( x/w+S_LightWidthNorm,1) * 0.5 + 0.5);
-	BBottom = saturate(1 -( min( y/w+S_LightHeightNorm,1) * 0.5 + 0.5 ));
-	BTop    = saturate(1 -( max( y/w-S_LightHeightNorm,-1) * 0.5 + 0.5 )); 
+	BTop = saturate(1 -( min( y/w+S_LightHeightNorm,1) * 0.5 + 0.5 ));
+	BBottom  = saturate(1 -( max( y/w-S_LightHeightNorm,-1) * 0.5 + 0.5 )); 
 	
 
-	radius_in_pixel = max( 0,( BRight - BLeft ) * DEPTH_RES / 2 );
-	num_occlu = 0;
-	for( int v = -radius_in_pixel; v < radius_in_pixel + 1; v += 1 )
-	{
-		for( int u = -radius_in_pixel; u < radius_in_pixel + 1; u += 1 )
-		{
-			float depth = TexDepthMap.Load( int3(center_coord) + int3( u, v, 0 ) );	
-			if( depth + DepthBiasDefault < pixel_unit_z)
-			{
-				num_occlu += 1.0;
-			}
-		}
-	}
-	float fPartLit = 1.0;
-	if( num_occlu != 0 )
-		fPartLit = 1 - num_occlu/((int)radius_in_pixel*(int)radius_in_pixel*4);
-
-	
 //---------------------------
+	if( BRight < BLeft )
+	{
+		return float4(1,0,0,1);
+	}
+	float fPartLit = 0;
+	float  rescale = 1/g_NormalizedFloatToSATUINT;
+	float2 moments = {0.0,0.0};
+	float2 moments0, moments1, moments2, moments3;
+
+	int   light_per_row =20;
+	float   sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+		
+	float2 curr_lt = float2( BLeft, BTop );
+	num_occ = 0;
+	for( int i = 0; i<light_per_row; ++i )
+	{
+		for( int j = 0; j<light_per_row; ++j )
+		{
+			float  curr_depth = TexDepthMap.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
+			if( curr_depth < pixel_unit_z - DepthBiasDefault )
+			{
+				num_occ += 1.0;
+			}
+					
+			curr_lt.x += sub_light_size_01;
+		}
+		curr_lt.x = BLeft;
+		curr_lt.y += sub_light_size_01;
+	}
+	fPartLit = num_occ;
+	fPartLit /= (light_per_row * light_per_row) ;
+	fPartLit = 1 - fPartLit;
+
+//---------------------------
+
+	
 	return float4( fPartLit,fPartLit,fPartLit,1);
+	
 	
 }
 

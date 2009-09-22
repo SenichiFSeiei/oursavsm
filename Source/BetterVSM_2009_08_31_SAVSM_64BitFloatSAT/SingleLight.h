@@ -5,7 +5,7 @@
 
 // Begin ---------------------	Light Position ---------------------------------
 //#define LIGHT_POS0	D3DXVECTOR3(0.089104, 60.029869, -40.556995)//front
-#define LIGHT_POS0	D3DXVECTOR3(6.389104, 13.529869, -2.556995)//front
+#define LIGHT_POS0	D3DXVECTOR3(1.848, 9.902, -0.680)//front
 #define LIGHT_POS1	D3DXVECTOR3(0.089104, 41.029869, 0.556995)//left
 #define LIGHT_POS2	D3DXVECTOR3(0.089104, 30.029869, 0.556995)//right
 #define LIGHT_POS3	D3DXVECTOR3(68.089104, 97.029869, 15.556995)//front

@@ -473,6 +473,19 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
 
     V(m_pShadowMapEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewProj));
     V(m_pShadowMapEffect->GetVariableByName("mLightView")->AsMatrix()->SetMatrix((float *)&mLightView));
+#ifdef USE_LINEAR_Z
+	D3DXMATRIX mClip2Tex, mTmp;
+    mClip2Tex = D3DXMATRIX( 0.5,    0, 0,   0,
+						    0, -0.5, 0,   0,
+							0,    0, 1,   0,
+							0.5,  0.5, 0,   1 );
+    D3DXMATRIX mLightViewProjClip2Tex, mLightProjClip2TexInv;
+    D3DXMatrixMultiply(&mTmp, &mLightProj, &mClip2Tex);
+    D3DXMatrixInverse(&mLightProjClip2TexInv, NULL, &mTmp);
+    V(m_pShadowMapEffect->GetVariableByName("mLightProjClip2TexInv")->AsMatrix()->SetMatrix((float *)&mLightProjClip2TexInv));
+	V(m_pShadowMapEffect->GetVariableByName("Zf")->AsScalar()->SetFloat(g_LCameraRef.GetFarClip()));
+	V(m_pShadowMapEffect->GetVariableByName("Zn")->AsScalar()->SetFloat(g_LCameraRef.GetNearClip()));
+#endif
 
     m_pDRenderTechnique = m_pShadowMapEffect->GetTechniqueByName("RenderDepth");
     if (m_pDepthTex[0] == NULL)

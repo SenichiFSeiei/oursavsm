@@ -57,8 +57,10 @@ cbuffer cb0 : register(b0)
     float4 spec_clr_hel  = {1,1,1,1};
     float4 spec_clr_stone = {1,1,1,1};
     float4 spec_clr_floor = {1,1,1,1};
-    float DepthBiasDefault = 0.0;
+    float DepthBiasDefault = 0.02;
+    float DepthBiasKernel = 0.0;
     float fLightZn;
+    float fLightZf;
     float fScreenWidth;
     float fScreenHeight;
     float fLumiFactor;
@@ -142,264 +144,7 @@ float2 FiveCase( int nBufferLevel, float Width, float Height, float Left, float 
 	}
 }
 
-float4 AccurateShadowIntSAT(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
-{
-	float depth_bias = 0.01;
-	float4 vLightPos = TexPosInWorld.Load(int3(vPos.x-0.5,vPos.y-0.5,0));	
-	vLightPos = mul( float4(vLightPos.xyz,1), mLightView );
-	
-	float4 vPosLight = mul( float4(vLightPos.xyz,1), mLightProj );
-	float2 ShadowTexC = ( vPosLight.xy/vPosLight.w ) * 0.5 + float2( 0.5, 0.5 ) ;
-	ShadowTexC.y = 1.0 - ShadowTexC.y;
-	
-	if( ShadowTexC.x > 1.0 || ShadowTexC.x < 0.0  || ShadowTexC.y > 1.0 || ShadowTexC.y < 0.0 )
-		return float4( 1,1,1,1 );
-	
-	//---------------------------------------------------------------------------------
-	float  Zn = fLightZn;
-	float  Zf = fLightZn + LIGHT_ZF_DELTA;
-	float  w = vPosLight.w,
-		   x = vPosLight.x,
-		   y = vPosLight.y;
-	float pixel_unit_z = vPosLight.z/vPosLight.w;
-	
-	if( pixel_unit_z > 0.99 ) 
-		return float4( 1,1,1,1 );
-	
-//calculate the filter kernel -------------------------------------------------------------------------------------
-	float  LightSize = fFilterSize;
-	float  scale = ( w - Zn )/w;
-	float  LightWidthPers  = LightSize  * scale,
-		   LightHeightPers = LightSize * scale;
-	float4x4 g_mLightProj = mLightProj;
-	float	 NpWidth  = Zn/g_mLightProj[0][0],
-		     NpHeight = Zn/g_mLightProj[1][1];
-		     
-	float  LightWidthPersNorm  = LightWidthPers /NpWidth,
-		   LightHeightPersNorm = LightHeightPers/NpHeight;
-		   
-	float  BLeft   = max( x/w-LightWidthPersNorm,-1) * 0.5 + 0.5,
-		   BRight  = min( x/w+LightWidthPersNorm,1) * 0.5 + 0.5,
-		   BBottom = 1 -( min( y/w+LightHeightPersNorm,1) * 0.5 + 0.5 ),
-		   BTop    = 1 -( max( y/w-LightHeightPersNorm,-1) * 0.5 + 0.5 ); 
-		   
-	float radius_in_pixel = ( BRight - BLeft ) * DEPTH_RES / 2;
-	float3  center_coord = float3( floor( ShadowTexC * DEPTH_RES ) - float2(0.5,0.5), 0 );	   
-	float	T_LightWidth, 
-			T_LightHeight,
-			S_LightWidth ,
-			S_LightHeight,
-			S_LightWidthNorm = LightWidthPersNorm, 
-			S_LightHeightNorm = LightHeightPersNorm;
-	
-	float2	Depth1,
-			Depth2,
-			Depth3,
-			Depth4;
-	float Zmin,Zmax;
-	float sum_depth = 0;
-	bool variance_not_reliable = false;
-	{
-		float2 uv_off = frac( ShadowTexC * DEPTH_RES - float2(0.5,0.5) );
-
-		float2 moments = {0.0,0.0};
-		float2 moments0, moments1, moments2, moments3;
-		float  rescale = 1/g_NormalizedFloatToSATUINT;
-		int   offset = max(1,( BRight - BLeft ) * DEPTH_RES / 2);
-		{
-			int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-			int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-			int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-			int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-			uint2  d_rb = SatVSM.Load( int_coord_rb );
-			uint2  d_lt = SatVSM.Load( int_coord_lt );
-			uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-			uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-			moments0 = (d_rb - d_rt - d_lb + d_lt);
-			moments0 /= ((offset*2)*(offset*2));
-			moments0 *= rescale;
-		}
-		{
-			center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(1,0), 0 );
-			int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-			int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-			int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-			int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-			uint2  d_rb = SatVSM.Load( int_coord_rb );
-			uint2  d_lt = SatVSM.Load( int_coord_lt );
-			uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-			uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-			moments1 = (d_rb - d_rt - d_lb + d_lt);
-			moments1 /= ((offset*2)*(offset*2));
-			moments1 *= rescale;
-		}
-		moments0.x = dot( float2(uv_off.x,1-uv_off.x),float2(moments0.x,moments1.x) );
-		moments0.y = dot( float2(uv_off.x,1-uv_off.x),float2(moments0.y,moments1.y) );
-
-		{
-			center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(0,1), 0 );
-			int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-			int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-			int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-			int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-			uint2  d_rb = SatVSM.Load( int_coord_rb );
-			uint2  d_lt = SatVSM.Load( int_coord_lt );
-			uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-			uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-			moments2 = (d_rb - d_rt - d_lb + d_lt);
-			moments2 /= ((offset*2)*(offset*2));
-			moments2 *= rescale;
-		}
-		{
-			center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(1,1), 0 );
-			int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-			int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-			int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-			int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-			uint2  d_rb = SatVSM.Load( int_coord_rb );
-			uint2  d_lt = SatVSM.Load( int_coord_lt );
-			uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-			uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-			moments3 = (d_rb - d_rt - d_lb + d_lt);
-			moments3 /= ((offset*2)*(offset*2));
-			moments3 *= rescale;
-		}
-		moments1.x = dot( float2(uv_off.x,1-uv_off.x),float2(moments2.x,moments3.x) );
-		moments1.y = dot( float2(uv_off.x,1-uv_off.x),float2(moments2.y,moments3.y) );
-		moments.x = dot( float2(uv_off.y,1-uv_off.y), float2(moments0.x,moments1.x) );
-		moments.y = dot( float2(uv_off.y,1-uv_off.y), float2(moments0.y,moments1.y) );
-
-
-		float  Ex = moments.x;
-		float  VARx = moments.y - Ex * Ex;
-				
-		{
-			float fPartLit = 0;
-			
-			fPartLit = 0.94 * VARx / ( VARx + ( pixel_unit_z - Ex ) * ( pixel_unit_z - Ex ) );
-							
-			sum_depth =  max( 0,( moments.x - fPartLit * pixel_unit_z )/( 1 - fPartLit ));
-		}
-		
-		//The bias is necessary due to the numerical precision. Sometimes when the occluder is very close to the receiver
-		//although the occluder is slightly nearer to the light, the precision loss makes it equally distant to the light, or worse
-		//makes it farther
-		//A second thought, you may want to check the Cheveshev Inequality Proof for the root of this bias
-		[branch]if( sum_depth >= pixel_unit_z + 0.09 )
-			return float4(1,1,1,1);
-			
-		
-	}	
-	
-	float ZminPers = sum_depth;
-	Zmin = -( Zf * Zn ) / ( ( Zf - Zn ) * ( ZminPers - Zf / ( Zf - Zn ) ) );
-
-	T_LightWidth  = ( w - Zmin ) * ( LightSize  ) / w,
-	T_LightHeight = ( w - Zmin ) * ( LightSize ) / w,
-
-	S_LightWidth  = Zn * T_LightWidth  / Zmin,
-	S_LightHeight = Zn * T_LightHeight / Zmin,
-	S_LightWidthNorm  = S_LightWidth  / NpWidth,
-	S_LightHeightNorm = S_LightHeight / NpHeight;
-		
-	BLeft   = saturate(max( x/w-S_LightWidthNorm,-1) * 0.5 + 0.5);
-	BRight  = saturate(min( x/w+S_LightWidthNorm,1) * 0.5 + 0.5);
-	BBottom = saturate(1 -( min( y/w+S_LightHeightNorm,1) * 0.5 + 0.5 ));
-	BTop    = saturate(1 -( max( y/w-S_LightHeightNorm,-1) * 0.5 + 0.5 )); 
-	
-//---------------------------
-	
-	float2 uv_off = frac( ShadowTexC * DEPTH_RES - float2(0.5,0.5) );
-	center_coord = float3( floor( ShadowTexC * DEPTH_RES ) - float2(0.5,0.5), 0 );
-
-	float2 moments = {0.0,0.0};
-	float2 moments0, moments1, moments2, moments3;
-	float  rescale = 1/g_NormalizedFloatToSATUINT;
-	int   offset = max(4,( BRight - BLeft ) * DEPTH_RES / 2);
-	{
-		int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-		int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-		int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-		int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-		uint2  d_rb = SatVSM.Load( int_coord_rb );
-		uint2  d_lt = SatVSM.Load( int_coord_lt );
-		uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-		uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-		moments0 = (d_rb - d_rt - d_lb + d_lt);
-		moments0 /= ((offset*2)*(offset*2));
-		moments0 *= rescale;
-	}
-	{
-		center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(1,0), 0 );
-		int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-		int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-		int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-		int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-		uint2  d_rb = SatVSM.Load( int_coord_rb );
-		uint2  d_lt = SatVSM.Load( int_coord_lt );
-		uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-		uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-		moments1 = (d_rb - d_rt - d_lb + d_lt);
-		moments1 /= ((offset*2)*(offset*2));
-		moments1 *= rescale;
-	}
-	moments0.x = dot( float2(uv_off.x,1-uv_off.x),float2(moments0.x,moments1.x) );
-	moments0.y = dot( float2(uv_off.x,1-uv_off.x),float2(moments0.y,moments1.y) );
-
-	{
-		center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(0,1), 0 );
-		int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-		int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-		int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-		int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-		uint2  d_rb = SatVSM.Load( int_coord_rb );
-		uint2  d_lt = SatVSM.Load( int_coord_lt );
-		uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-		uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-		moments2 = (d_rb - d_rt - d_lb + d_lt);
-		moments2 /= ((offset*2)*(offset*2));
-		moments2 *= rescale;
-	}
-	{
-		center_coord = float3( floor( ShadowTexC * DEPTH_RES )  - float2(0.5,0.5) + float2(1,1), 0 );
-		int3  int_coord_rb = center_coord + int3(  offset, offset,0 );
-		int3  int_coord_lt = center_coord + int3( -offset,-offset,0 );
-		int3  int_coord_rt = center_coord + int3(  offset,-offset,0 );
-		int3  int_coord_lb = center_coord + int3( -offset, offset,0 );
-
-		uint2  d_rb = SatVSM.Load( int_coord_rb );
-		uint2  d_lt = SatVSM.Load( int_coord_lt );
-		uint2  d_rt = SatVSM.Load( int_coord_rt ); 
-		uint2  d_lb = SatVSM.Load( int_coord_lb ); 
-		moments3 = (d_rb - d_rt - d_lb + d_lt);
-		moments3 /= ((offset*2)*(offset*2));
-		moments3 *= rescale;
-	}
-	moments1.x = dot( float2(uv_off.x,1-uv_off.x),float2(moments2.x,moments3.x) );
-	moments1.y = dot( float2(uv_off.x,1-uv_off.x),float2(moments2.y,moments3.y) );
-	moments.x = dot( float2(uv_off.y,1-uv_off.y), float2(moments0.x,moments1.x) );
-	moments.y = dot( float2(uv_off.y,1-uv_off.y), float2(moments0.y,moments1.y) );
-
-
-	float  mu = moments.x;
-	float  delta_sqr = moments.y - mu * mu;
-	
-	float fPartLit = 0;
-	if( pixel_unit_z < mu + DepthBiasDefault && pixel_unit_z * pixel_unit_z < moments.y + DepthBiasDefault*0.1 )
-		fPartLit = 1.0;
-	else
-		fPartLit = delta_sqr / ( delta_sqr + ( pixel_unit_z - mu ) * ( pixel_unit_z - mu ) );
-	return float4( fPartLit,fPartLit,fPartLit,1);
-	
-}
-
+//#define PCF_EST
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
 {
 	float4 vLightPos = TexPosInWorld.Load(int3(vPos.x-0.5,vPos.y-0.5,0));	
@@ -416,11 +161,14 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	
 	//---------------------------------------------------------------------------------
 	float  Zn = fLightZn;
-	float  Zf = fLightZn + LIGHT_ZF_DELTA;
+	float  Zf = fLightZf;
 	float  w = vPosLight.w,
 		   x = vPosLight.x,
 		   y = vPosLight.y;
 	float pixel_unit_z = vPosLight.z/vPosLight.w;
+#ifdef	USE_LINEAR_Z
+	float pixel_linear_z = (vPosLight.w - Zn) / (Zf-Zn);
+#endif
 
 //calculate the filter kernel -------------------------------------------------------------------------------------
 	float  LightSize = fFilterSize;
@@ -455,46 +203,63 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		float2 moments = {0.0,0.0};
 		float2 moments0, moments1, moments2, moments3;
 		
-		int    light_per_row = 1;
-		float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+		int    light_per_row = 4;
 		
-		float2 curr_lt = float2( BLeft, BTop );
-		for( int i = 0; i<light_per_row; ++i )
+		float old_sum_depth = 0;
+		float unocc_part = 0;
+		float converge_bias = 0.02;
+		for( ;light_per_row < 6; light_per_row += 2 )
 		{
-			for( int j = 0; j<light_per_row; ++j )
+			float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+			
+			float2 curr_lt = float2( BLeft, BTop );
+			unocc_part = 0;
+			float sum_ex = 0, sum_x_sqr = 0;
+			for( int i = 0; i<light_per_row; ++i )
 			{
-
 				uint2  d_lt = SatVSM.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
-				uint2  d_rt = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,0))*DEPTH_RES), 0 ));
 				uint2  d_lb = SatVSM.Load( int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES), 0 ));
-				uint2  d_rb = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES), 0 ));
-				int2 crd_lt = int2(round(curr_lt*DEPTH_RES));
-				int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
-
-				moments0 = (d_rb - d_rt - d_lb + d_lt);
-				moments0 /= (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y);
-				moments0 *= rescale;
-				float  Ex = moments0.x;
-				float  VARx = moments0.y - Ex * Ex;
+				for( int j = 0; j<light_per_row; ++j )
 				{
-					float fPartLit = 0;
-					//Why this bias?
-					fPartLit = VARx / ( VARx + ( pixel_unit_z - Ex ) * ( pixel_unit_z - Ex ) );
-					if( pixel_unit_z < Ex + DepthBiasDefault/* && pixel_unit_z * pixel_unit_z < moments0.y + DepthBiasDefault*DepthBiasDefault*/ )
+
+					uint2  d_rt = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,0))*DEPTH_RES), 0 ));
+					uint2  d_rb = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES), 0 ));
+					int2 crd_lt = int2(round(curr_lt*DEPTH_RES));
+					int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
+
+					moments0 = (d_rb - d_rt - d_lb + d_lt);
+					moments0 /= (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y);
+					moments0 *= rescale;
+					float  Ex = moments0.x;
+					float  E_sqr_x = moments0.y;
+					if( Ex > pixel_linear_z + DepthBiasKernel )
 					{
-						return float4(1,1,1,1);
+						++unocc_part;
 					}
 					else
-						fPartLit = VARx / ( VARx + ( pixel_unit_z - Ex ) * ( pixel_unit_z - Ex ) );
-					//return float4( fPartLit, fPartLit, fPartLit, 1);
-					sum_depth +=  max( 0,( moments0.x - fPartLit * pixel_unit_z )/( 1 - fPartLit ));
+					{
+						sum_ex += Ex;
+						sum_x_sqr += E_sqr_x;
+					}
+					curr_lt.x += sub_light_size_01;
+					d_lt = d_rt;
+					d_lb = d_rb;
 				}
-				curr_lt.x += sub_light_size_01;
+				curr_lt.x = BLeft;
+				curr_lt.y += sub_light_size_01;
 			}
-			curr_lt.x = BLeft;
-			curr_lt.y += sub_light_size_01;
+			
+			sum_ex /= ((light_per_row * light_per_row)-unocc_part);
+			sum_x_sqr /= ((light_per_row * light_per_row)-unocc_part);
+			float var_x = sum_x_sqr - sum_ex * sum_ex;
+			
+			fPartLit = var_x / (var_x + ( pixel_linear_z - sum_ex )*( pixel_linear_z - sum_ex ) );
+
+			sum_depth =  Zn + max( 0,( sum_ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ))*(Zf-Zn);
 		}
-		sum_depth /= (light_per_row * light_per_row);
+		if( unocc_part == (light_per_row * light_per_row) )
+			return float4(0,1,0,1);
+
 
 		//---------------------------
 		
@@ -502,14 +267,11 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		//although the occluder is slightly nearer to the light, the precision loss makes it equally distant to the light, or worse
 		//makes it farther
 		//A second thought, you may want to check the Cheveshev Inequality Proof for the root of this bias
-		[branch]if( sum_depth >= pixel_unit_z - 0.05 )
-			return float4(1,1,1,1);
-			
-		
+		[branch]if( sum_depth >= pixel_linear_z * (Zf-Zn) + Zn)
+			return float4(1,0,0,1);		
 	}
 	
-	float ZminPers = sum_depth;
-	Zmin = -( Zf * Zn ) / ( ( Zf - Zn ) * ( ZminPers - Zf / ( Zf - Zn ) ) );
+	Zmin = sum_depth;
 
 	T_LightWidth  = ( w - Zmin ) * ( LightSize  ) / w,
 	T_LightHeight = ( w - Zmin ) * ( LightSize ) / w,
@@ -526,49 +288,97 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	
 
 //---------------------------
+#ifdef PCF_EST
 	float fPartLit = 0;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
 	float2 moments = {0.0,0.0};
 	float2 moments0, moments1, moments2, moments3;
 
-	int   light_per_row = 1;
+	int   light_per_row = 10;
 	float   sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 		
 	float2 curr_lt = float2( BLeft, BTop );
+	float	num_occ = 0;
 	for( int i = 0; i<light_per_row; ++i )
 	{
 		for( int j = 0; j<light_per_row; ++j )
 		{
-						
-			uint2  d_lt = SatVSM.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
-			uint2  d_rt = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,0))*DEPTH_RES), 0 ));
-			uint2  d_lb = SatVSM.Load( int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES), 0 ));
-			uint2  d_rb = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES), 0 ));
-			       	
-			int2 crd_lt = int2(round(curr_lt*DEPTH_RES));
-			int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
-			moments0 = (d_rb - d_rt - d_lb + d_lt);
-			moments0 /= (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y);
-			moments0 *= rescale;
-			float  mu = moments0.x;
-			float  delta_sqr = moments0.y - mu * mu;
-			if( pixel_unit_z < mu + DepthBiasDefault/* && pixel_unit_z * pixel_unit_z < moments0.y + DepthBiasDefault*DepthBiasDefault*/ )
+			float  curr_depth = TexDepthMap.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
+			if( curr_depth < pixel_unit_z - DepthBiasDefault )
 			{
-				fPartLit += 1.0;
+				num_occ += 1.0;
 			}
-			else
-				fPartLit += delta_sqr / ( delta_sqr + ( pixel_unit_z - mu ) * ( pixel_unit_z - mu ) );
-			//if( i==1&&j==0 )
-			//	return float4( fPartLit,fPartLit,fPartLit,1);
+					
 			curr_lt.x += sub_light_size_01;
 		}
 		curr_lt.x = BLeft;
 		curr_lt.y += sub_light_size_01;
 	}
+	fPartLit = num_occ;
 	fPartLit /= (light_per_row * light_per_row) ;
+	fPartLit = 1 - fPartLit;
+	
+#else
+		float fPartLit = 0;
+		float  rescale = 1/g_NormalizedFloatToSATUINT;
+		float2 moments = {0.0,0.0};
+		float2 moments0, moments1, moments2, moments3;
+		
+		int    light_per_row = 4;
+		
+		float unocc_part = 0;
+		
+			float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+			
+			float2 curr_lt = float2( BLeft, BTop );
+			unocc_part = 0;
+			float sum_ex = 0, sum_x_sqr = 0;
+			for( int i = 0; i<light_per_row; ++i )
+			{
+				uint2  d_lt = SatVSM.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
+				uint2  d_lb = SatVSM.Load( int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES), 0 ));
+				for( int j = 0; j<light_per_row; ++j )
+				{
 
+					uint2  d_rt = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,0))*DEPTH_RES), 0 ));
+					uint2  d_rb = SatVSM.Load( int3(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES), 0 ));
+					int2 crd_lt = int2(round(curr_lt*DEPTH_RES));
+					int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
+
+					moments0 = (d_rb - d_rt - d_lb + d_lt);
+					moments0 /= (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y);
+					moments0 *= rescale;
+					float  Ex = moments0.x;
+					float  E_sqr_x = moments0.y;
+					if( Ex > pixel_linear_z + 0.015 )
+					{
+						++unocc_part;
+					}
+					else
+					{
+						sum_ex += Ex;
+						sum_x_sqr += E_sqr_x;
+					}
+					curr_lt.x += sub_light_size_01;
+					d_lt = d_rt;
+					d_lb = d_rb;
+				}
+				curr_lt.x = BLeft;
+				curr_lt.y += sub_light_size_01;
+			}
+			if( unocc_part == (light_per_row * light_per_row) )
+				return float4(1,1,1,1);
+			sum_ex /= ((light_per_row * light_per_row)-unocc_part);
+			sum_x_sqr /= ((light_per_row * light_per_row)-unocc_part);
+			float var_x = sum_x_sqr - sum_ex * sum_ex;
+			
+			fPartLit = (1 - unocc_part/(light_per_row * light_per_row)) * var_x / (var_x + ( pixel_linear_z - sum_ex )*( pixel_linear_z - sum_ex ) ) + unocc_part/(light_per_row * light_per_row);	;
+
+			if( sum_ex > pixel_linear_z )
+				return float4(1,1,1,1);
+	
+#endif
 //---------------------------
-
 	
 	return float4( fPartLit,fPartLit,fPartLit,1);
 	
