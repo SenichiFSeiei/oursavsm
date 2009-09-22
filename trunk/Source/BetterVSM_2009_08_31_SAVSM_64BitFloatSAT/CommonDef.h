@@ -81,6 +81,7 @@ struct Biases
 #define USE_INT_SAT
 //#define DISTRIBUTE_PRECISION
 #define BILINEAR_INT_SMP
+#define USE_LINEAR_Z
 
 #include "FirstScript.h"
 

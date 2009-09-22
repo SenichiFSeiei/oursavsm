@@ -40,6 +40,12 @@ cbuffer cb0 : register(b1)
     int SkinSpecCoe;//Can not remove this, shadow maps class calls mesh render, and mesh render always require a SkinSpecCoe, this is ugly
 	int nBufferLevel;
 	int nSampleNum;
+#ifdef USE_LINEAR_Z	
+	row_major float4x4 mLightProjClip2TexInv;
+	float Zf;
+	float Zn;
+#endif
+
 };
 
 float4 RenderDepthVS(float3 vPos : POSITION) : SV_Position
@@ -481,12 +487,17 @@ float4 RenderSATVerticalPS(float4 vPos : SV_Position) : SV_Target0
 uint4 ConvertDepth2SATPS(float4 vPos : SV_Position) : SV_Target0
 {
     float fDepth = DepthTex0.Load(uint3(vPos.x, vPos.y, 0));
+#ifdef USE_LINEAR_Z
+	fDepth = 1. / (fDepth * mLightProjClip2TexInv[2][3] + mLightProjClip2TexInv[3][3]);
+	fDepth -= Zn;
+	fDepth /= (Zf-Zn);
+	fDepth += 0.001;
+#endif
     
     float dx = DepthTex0.Load(uint3(vPos.x+1,vPos.y,0)) - fDepth;
     float dy = DepthTex0.Load(uint3(vPos.x,vPos.y+1,0)) - fDepth;
     
-    
-    float moment2 = fDepth * fDepth;// + (dx*dx+dy*dy);
+    float moment2 = fDepth * fDepth;
     
     uint  uDepth  = round( fDepth * g_NormalizedFloatToSATUINT );
     uint  uMoment = round( moment2 * g_NormalizedFloatToSATUINT );

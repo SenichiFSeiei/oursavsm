@@ -67,10 +67,10 @@ static InputBuffer g_GBuffer;
 static FullRTQuadRender g_ScrQuadRender("FinalPass");
 static int ShadowAlgorithm = STD_VSM;
 static float g_fDepthBiasDefault = 0.1;
-static float g_fLightZn = 40;
-static float g_fCtrledLightZn = 10;//user controlled zn
-static float g_fCtrledLightZf = 100;
-static float g_fCtrledLightFov = D3DX_PI/2;
+static float g_fLightZn = 0;
+static float g_fCtrledLightZn = 2.8;//user controlled zn
+static float g_fCtrledLightZf = 16;
+static float g_fCtrledLightFov = 0.44;//D3DX_PI/2;
 static int g_nNumLightSample = 0;
 static bool g_LightVary = false;
 static bool g_CameraMove = false;
@@ -196,11 +196,11 @@ static void InitApp()
 
     
 	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light Zn", 35, iY += 25, 125, 22 );
-    g_SampleUI.AddSlider( IDC_LIGHT_ZN, 160, iY, 124, 22, 0, 100, 50 );
+    g_SampleUI.AddSlider( IDC_LIGHT_ZN, 160, iY, 124, 22, 0, 100, g_fCtrledLightZn*5 );
 	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light Zf", 35, iY += 25, 125, 22 );
-    g_SampleUI.AddSlider( IDC_LIGHT_ZF, 160, iY, 124, 22, 0, 100, 90 );
+    g_SampleUI.AddSlider( IDC_LIGHT_ZF, 160, iY, 124, 22, 0, 100, g_fCtrledLightZf - 10 );
 	g_SampleUI.AddStatic( IDC_COMMON_LABEL, L"Light FOV", 35, iY += 25, 125, 22 );
-    g_SampleUI.AddSlider( IDC_LIGHT_FOV, 160, iY, 124, 22, 0, 100, 50 );
+    g_SampleUI.AddSlider( IDC_LIGHT_FOV, 160, iY, 124, 22, 0, 100, g_fCtrledLightFov * 100 );
     g_SampleUI.AddStatic( IDC_LIGHT_SIZE_LABEL, L"Light source size:", 35, iY += 25, 125, 22 );
     g_SampleUI.AddSlider( IDC_LIGHT_SIZE, 160, iY, 124, 22, 0, 100, 0 );
 
@@ -259,7 +259,7 @@ static void InitApp()
 	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 35, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 35, iY += 25, 124, 22, true);
-    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, true);
+    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 35, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 35, iY += 25, 124, 22, false);
 
@@ -427,6 +427,10 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
 		if( ShadowAlgorithm == STD_VSM )
 		{
 			g_StdVSM.m_bShaderChanged = true;
+		}
+		if( ShadowAlgorithm == STD_PCSS )
+		{
+			g_PCSS.m_bShaderChanged = true;
 		}
 		break;
     }
@@ -898,7 +902,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 
 
 	Parameters para;
-	para.fLightZn				=	g_fLightZn;				
+	para.fLightZn				=	g_fCtrledLightZn;				
 
 	float biases[15];
 	biases[0]	=	g_fDepthBiasObject0;
@@ -1025,14 +1029,13 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 			
 			g_MeshScene.set_parameters( render_ogre, render_scene, render_fan, false );
 			S3UTCamera& g_LCameraRef = local_cam;
-			g_fLightZn = g_fCtrledLightZn;//light_ZNS[0];
 			D3DXMATRIX mLightView;
 			// here we compute light viewprojection so that light oversees the whole scene
 			D3DXMATRIX mTranslate;
 
 			D3DXMatrixInverse(&mTranslate, NULL, g_LCameraRef.GetWorldMatrix());
 			D3DXMatrixMultiply(&mLightView, &mTranslate, g_LCameraRef.GetViewMatrix());
-			g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fLightZn, g_fCtrledLightZf);
+			g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
 			unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BDUMP_SHADOWMAP)->GetChecked();
 			ssmap.Render(pDev10, &g_MeshScene, g_LCameraRef,fTime,fElapsedTime,iTmp);
