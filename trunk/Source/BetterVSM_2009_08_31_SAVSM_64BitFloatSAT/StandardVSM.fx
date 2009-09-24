@@ -95,7 +95,7 @@ float4 phong_shading( float3 light_space_pos, float3 light_space_camera_pos, flo
 
 }
 
-float est_occ_depth_and_chebshev_ineq( int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part )
+float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part )
 {
 	float2 moments = {0.0,0.0};
 	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
@@ -117,7 +117,7 @@ float est_occ_depth_and_chebshev_ineq( int light_per_row, float BLeft, float BRi
 
 			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y) );
 
-			if( moments.x > pixel_linear_z + DepthBiasKernel )
+			if( moments.x > pixel_linear_z + bias )
 				++unocc_part;
 			else
 			{
@@ -172,7 +172,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	{
 		float fPartLit = 0, unocc_part = 0;
 		int    light_per_row = 4;
-		est_occ_depth_and_chebshev_ineq( light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+		est_occ_depth_and_chebshev_ineq( DepthBiasKernel,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 		[branch]if( unocc_part == (light_per_row * light_per_row) )
 			return float4(1,1,1,1);
 		[branch]if( Zmin >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
@@ -191,7 +191,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 			
 	float fPartLit = 0, unocc_part = 0;
 	int    light_per_row = 4;
-	float Ex = est_occ_depth_and_chebshev_ineq( light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+	float Ex = est_occ_depth_and_chebshev_ineq( 0.02,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
 	[branch]if( Zmin + 0.1 >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
