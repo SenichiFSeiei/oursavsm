@@ -496,9 +496,12 @@ uint4 ConvertDepth2SATPS(float4 vPos : SV_Position) : SV_Target0
     
     float dx = DepthTex0.Load(uint3(vPos.x+1,vPos.y,0)) - fDepth;
     float dy = DepthTex0.Load(uint3(vPos.x,vPos.y+1,0)) - fDepth;
+ #ifdef EVSM
+	fDepth = exp(EXPC*fDepth);
+ #endif   
     
     float moment2 = fDepth * fDepth;
-    
+   
     uint  uDepth  = round( fDepth * g_NormalizedFloatToSATUINT );
     uint  uMoment = round( moment2 * g_NormalizedFloatToSATUINT );
     
@@ -544,7 +547,6 @@ float4 ConvertDepth2SATPS(float4 vPos : SV_Position) : SV_Target0
     float dy = DepthTex0.Load(uint3(vPos.x,vPos.y+1,0)) - fDepth;
     
     float moment2 = fDepth * fDepth;// + 0.25 *(dx*dx+dy*dy);
-    
     return float4(fDepth, moment2, fDepth, fDepth);
 }
 #endif
