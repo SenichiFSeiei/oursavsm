@@ -100,7 +100,7 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 	float2 moments = {0.0,0.0};
 	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
-	
+	unocc_part = 0;
 	float2 curr_lt = float2( BLeft, BTop );
 	float sum_x = 0, sum_sqr_x = 0;
 	for( int i = 0; i<light_per_row; ++i )
@@ -137,7 +137,10 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 	float VARx = E_sqr_x - Ex * Ex;
 	float est_depth = pixel_linear_z - Ex;
 	fPartLit = VARx / (VARx + est_depth * est_depth );
-	occ_depth =  fLightZn + max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ))*(fLightZf-fLightZn);
+	occ_depth =  max( 1,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+	occ_depth = log(occ_depth);
+	occ_depth /= EXPC;
+	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
 	return Ex;
 }
 
@@ -172,11 +175,11 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	{
 		float fPartLit = 0, unocc_part = 0;
 		int    light_per_row = 4;
-		est_occ_depth_and_chebshev_ineq( DepthBiasKernel,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+		est_occ_depth_and_chebshev_ineq( 0/*DepthBiasKernel*/,light_per_row, BLeft, BRight,BTop, exp(pixel_linear_z*EXPC), fPartLit, Zmin, unocc_part );
 		[branch]if( unocc_part == (light_per_row * light_per_row) )
 			return float4(1,1,1,1);
 		[branch]if( Zmin >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
-			return float4(1,1,1,1);		
+			return float4(1,1,1,1);	
 	}
 	
 	float	T_LightWidth  = ( vPosLight.w - Zmin ) * ( fFilterSize ) / vPosLight.w;
@@ -186,19 +189,19 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-S_LightWidthNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+S_LightWidthNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+S_LightWidthNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-S_LightWidthNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( BRight - BLeft < 0.0039 )
+	if( BRight - BLeft < 0.004 )
 		return float4( 1,1,1,1 );
 			
 	float fPartLit = 0, unocc_part = 0;
 	int    light_per_row = 4;
-	float Ex = est_occ_depth_and_chebshev_ineq( 0.02,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+	float Ex = est_occ_depth_and_chebshev_ineq( 0.0,light_per_row, BLeft, BRight,BTop, exp(pixel_linear_z*EXPC), fPartLit, Zmin, unocc_part );
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
 	[branch]if( Zmin + 0.1 >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
 		return float4(1,1,1,1);		
 	fPartLit = (1 - unocc_part/(light_per_row * light_per_row)) * fPartLit + unocc_part/(light_per_row * light_per_row);	;
-	if( Ex > pixel_linear_z )
-		return float4(1,1,1,1);	
+	//if( Ex > pixel_linear_z )
+	//	return float4(1,1,1,1);	
 	
 	return float4( fPartLit,fPartLit,fPartLit,1);
 }
