@@ -1,4 +1,5 @@
 //#define DEBUG_SAT
+
 #define _USE_MATH_DEFINES
 
 #include <dxut.h>
@@ -12,7 +13,11 @@
 #include <S3UTcamera.h>
 
 #ifdef  USE_INT_SAT
+#ifdef DUAL_EVSM
+#define SAT_FORMAT DXGI_FORMAT_R32G32B32A32_UINT
+#else
 #define SAT_FORMAT DXGI_FORMAT_R32G32_UINT
+#endif
 #else
 #ifdef DISTRIBUTE_PRECISION
 #define SAT_FORMAT DXGI_FORMAT_R32G32B32A32_FLOAT
@@ -34,7 +39,6 @@ SSMap::SSMap()
 	m_bBuildVSM = false;
 	m_pDRenderTechnique = NULL;
 	m_bShaderChanged = false;
-
 }
 
 void SSMap::set_parameters( bool par_bBuildHSM, bool par_bBuildMSSM, bool par_bBuildSAT, bool par_bBuildVSM )

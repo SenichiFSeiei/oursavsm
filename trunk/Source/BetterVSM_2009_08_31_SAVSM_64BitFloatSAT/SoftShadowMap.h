@@ -13,6 +13,10 @@
 
 #ifndef SSMAP
 #define SSMAP
+#include <dxut.h>
+#include <dxutgui.h>
+#include <dxutsettingsdlg.h>
+
 class S3UTMesh;
 class S3UTCamera;
 
