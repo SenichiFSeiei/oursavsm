@@ -258,6 +258,7 @@ static void InitApp()
     g_SampleUI.AddCheckBox( IDC_BMOVECAMERA, L"Move Camera", 35, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 35, iY += 25, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_BDUMP_LIGHT_PAR, L"Dump Light Para", 150, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 35, iY += 25, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 35, iY += 25, 124, 22, true);
@@ -298,7 +299,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
        //-------------------------------------------------------------------------
        //Initialize test command window
        //-------------------------------------------------------------------------
-    RedirectIOToConsole(L"output window");
+    //RedirectIOToConsole(L"output window");
     // DXUT will create and use the best device (either D3D9 or D3D10) 
     // that is available on the system depending on which D3D callbacks are set below
 
@@ -517,6 +518,8 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 {
     return true;
 }
+
+
 //--------------------------------------------------------------------------------------
 // Create any D3D10 resources that aren't dependant on the back buffer
 //--------------------------------------------------------------------------------------
@@ -965,6 +968,12 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 									g_MeshScene, g_CameraRef, 
 									pDev10, fTime, fElapsedTime, pUserContext );
 // rendering a subdivided light
+	//--
+	D3DXVECTOR3 vTmpLight;
+	g_Widget.ProvideParameters( vTmpLight, g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
+	D3DXVECTOR3 vTmpLookAt = *g_LCamera[0].GetLookAtPt();
+	g_LCamera[0].SetViewParams( &vTmpLight,&vTmpLookAt );
+	//--
 	float scaled_half_light_size = (g_fFilterSize*LIGHT_SCALE_FACTOR);
 	float fStartPt = -scaled_half_light_size;
 	float fInterval = 2 * scaled_half_light_size / g_nNumLightSample;
@@ -1035,7 +1044,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 
 			D3DXMatrixInverse(&mTranslate, NULL, g_LCameraRef.GetWorldMatrix());
 			D3DXMatrixMultiply(&mLightView, &mTranslate, g_LCameraRef.GetViewMatrix());
-			g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
+			g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
 			unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BDUMP_SHADOWMAP)->GetChecked();
 			ssmap.Render(pDev10, &g_MeshScene, g_LCameraRef,fTime,fElapsedTime,iTmp);
@@ -1178,10 +1187,10 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
-	g_LCameraRef.SetProjParams(D3DX_PI*g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
+	g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
 	if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
-		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
+		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize,(bool)g_SampleUI.GetCheckBox(IDC_BDUMP_LIGHT_PAR)->GetChecked());
 
     // render UI
     if (g_bShowUI)

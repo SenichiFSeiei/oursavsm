@@ -31,14 +31,25 @@ public:
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
 	void	OnD3D10DestroyDevice();
-	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
+	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize, bool doRecord = false );
+	void	ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov);
 	~Widget3D(){};
 private:
 	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
+	void	DumpParameters();
+	void	ReadParameters();
+
 	ID3D10Effect				*m_pEffect;
 	ID3D10RasterizerState		*m_pRenderState;
+
+	D3DXVECTOR3 m_vLight;
+	float m_fLightSize;
+	float m_fCtrledLightZn;
+	float m_fCtrledLightZf;
+	float m_fCtrledLightFov;
+
 
 
 };

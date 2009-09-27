@@ -23,7 +23,7 @@ Texture2D<float4> VSMMip2;
 Texture2D<float>  TexDepthMap;
 
 #ifdef USE_INT_SAT
-Texture2D<uint2> SatVSM;
+Texture2D<uint4> SatVSM;
 #else
 #ifdef DISTRIBUTE_PRECISION
 Texture2D<float4> SatVSM;
@@ -97,33 +97,47 @@ float4 phong_shading( float3 light_space_pos, float3 light_space_camera_pos, flo
 
 float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part )
 {
-	float2 moments = {0.0,0.0};
+	float  expCZ = exp(pixel_linear_z*EXPC);
+	float  neg_exp_negCZ = -exp(-(pixel_linear_z)*EXPC);
+	float4 moments = {0.0,0.0,0.0,0.0};
 	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
-	unocc_part = 0;
+	float  unocc_part2 = 0;
+	
 	float2 curr_lt = float2( BLeft, BTop );
 	float sum_x = 0, sum_sqr_x = 0;
+	float sum_x2 = 0, sum_sqr_x2 = 0;
+	unocc_part = 0.0;
 	for( int i = 0; i<light_per_row; ++i )
 	{
-		uint2  d_lt = SatVSM.Load( int3(round(curr_lt*DEPTH_RES), 0) );			
-		uint2  d_lb = SatVSM.Load( int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES), 0 ));
+		uint4  d_lt = SatVSM.Load( int3(round(curr_lt*DEPTH_RES), 0) );
+		uint4  d_lb = SatVSM.Load( int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES), 0 ));
 		for( int j = 0; j<light_per_row; ++j )
 		{
 			int2 crd_lt = int2(round(curr_lt*DEPTH_RES));
 			int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
 
-			uint2  d_rt = SatVSM.Load( int3( crd_rb.x, crd_lt.y, 0 ));
-			uint2  d_rb = SatVSM.Load( int3( crd_rb, 0 ));
-
+			uint4  d_rt = SatVSM.Load( int3( crd_rb.x, crd_lt.y, 0 ));
+			uint4  d_rb = SatVSM.Load( int3( crd_rb, 0 ));
 			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y) );
+			moments.z = -moments.z;
 
-			if( moments.x > pixel_linear_z + bias )
+			if( moments.x > expCZ + bias )
 				++unocc_part;
 			else
 			{
 				sum_x += moments.x;
 				sum_sqr_x += moments.y;
 			}
+			
+			if( moments.z > neg_exp_negCZ )
+				++unocc_part2;
+			else
+			{
+				sum_x2 += moments.z;
+				sum_sqr_x2 += moments.w;
+			}
+			
 			curr_lt.x += sub_light_size_01;
 			d_lt = d_rt;
 			d_lb = d_rb;
@@ -135,17 +149,33 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 	float Ex = sum_x / ((light_per_row * light_per_row)-unocc_part);
 	float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part);
 	float VARx = E_sqr_x - Ex * Ex;
-	float est_depth = pixel_linear_z - Ex;
+	float est_depth = expCZ - Ex;
 	fPartLit = VARx / (VARx + est_depth * est_depth );
-	occ_depth =  max( 1,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+	occ_depth =  max( 1,( Ex - fPartLit * expCZ )/( 1 - fPartLit ));
 	occ_depth = log(occ_depth);
 	occ_depth /= EXPC;
 	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+	//-------------------------
+#ifdef DUAL_EVSM
+	float Ex2 = sum_x2 / ((light_per_row * light_per_row)-unocc_part);
+	float E_sqr_x2 = sum_sqr_x2 / ((light_per_row * light_per_row)-unocc_part);
+	float VARx2 = E_sqr_x2 - Ex2 * Ex2;
+	float est_depth2 = neg_exp_negCZ - Ex2;
+	float fPartLit2 = VARx2 / (VARx2 + est_depth2 * est_depth2 );
+	float occ_depth2 =  min( 0,( Ex2 - fPartLit2 * neg_exp_negCZ )/( 1 - fPartLit2 ));
+	occ_depth2 = log(-occ_depth2);
+	occ_depth2 /= -EXPC;
+	occ_depth2 = occ_depth2*(fLightZf-fLightZn) + fLightZn;	
+	occ_depth = max(occ_depth2,occ_depth);
+	fPartLit = min(fPartLit2,fPartLit);
+	unocc_part = max(unocc_part2,unocc_part);
+#endif
 	return Ex;
 }
 
 //#define PCF_EST
 //external dependency: mLightView, mLightProj, fLightZn, fLightZf, fFilterSize
+
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
 {
 	float4 vPosLight = TexPosInWorld.Load(int3(vPos.x-0.5,vPos.y-0.5,0));	
@@ -174,12 +204,13 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	float Zmin = 0;
 	{
 		float fPartLit = 0, unocc_part = 0;
-		int    light_per_row = 4;
-		est_occ_depth_and_chebshev_ineq( 0/*DepthBiasKernel*/,light_per_row, BLeft, BRight,BTop, exp(pixel_linear_z*EXPC), fPartLit, Zmin, unocc_part );
+		int    light_per_row = 1;
+		est_occ_depth_and_chebshev_ineq( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 		[branch]if( unocc_part == (light_per_row * light_per_row) )
 			return float4(1,1,1,1);
 		[branch]if( Zmin >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
-			return float4(1,1,1,1);	
+			return float4(1,1,1,1);		
+		//return float4( fPartLit,fPartLit,fPartLit,1 );
 	}
 	
 	float	T_LightWidth  = ( vPosLight.w - Zmin ) * ( fFilterSize ) / vPosLight.w;
@@ -189,12 +220,12 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-S_LightWidthNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+S_LightWidthNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+S_LightWidthNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-S_LightWidthNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( BRight - BLeft < 0.004 )
+	if( BRight - BLeft < 0.0039 )
 		return float4( 1,1,1,1 );
 			
 	float fPartLit = 0, unocc_part = 0;
-	int    light_per_row = 4;
-	float Ex = est_occ_depth_and_chebshev_ineq( 0.0,light_per_row, BLeft, BRight,BTop, exp(pixel_linear_z*EXPC), fPartLit, Zmin, unocc_part );
+	int    light_per_row = 1;
+	float Ex = est_occ_depth_and_chebshev_ineq( 0.0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
 	[branch]if( Zmin + 0.1 >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)

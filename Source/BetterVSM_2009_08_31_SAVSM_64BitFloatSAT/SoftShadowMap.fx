@@ -12,8 +12,8 @@ Texture2D DiffuseTex;
 Texture2DArray<float2> DepthNBuffer;
 
 #ifdef  USE_INT_SAT
-Texture2D<uint2> SatSrcTex;
-Texture2D<uint2> SatTex;
+Texture2D<uint4> SatSrcTex;
+Texture2D<uint4> SatTex;
 #else
 Texture2D<float4> SatSrcTex;
 Texture2D<float4> SatTex;
@@ -433,7 +433,7 @@ float4 RenderSATHorizontalPS(float4 vPos : SV_Position) : SV_Target0
     int3 current_coord = int3( vPos.x, vPos.y, 0 );
 
 #ifdef USE_INT_SAT
-	uint2  sum_result = 0;
+	uint4  sum_result = 0;
 #else
     float4 sum_result = 0;
 #endif
@@ -445,8 +445,8 @@ float4 RenderSATHorizontalPS(float4 vPos : SV_Position) : SV_Target0
     }
     
 #ifdef USE_INT_SAT
-	uint2  ret = sum_result;
-	return uint4( ret.x, ret.y, 0, 0 );
+	uint4  ret = sum_result;
+	return uint4( ret.x, ret.y, ret.z, ret.w );
 #else
 	float4 ret = sum_result;
 	return ret;
@@ -462,7 +462,7 @@ float4 RenderSATVerticalPS(float4 vPos : SV_Position) : SV_Target0
     int3 current_coord = int3( vPos.x, vPos.y, 0 );
 
 #ifdef USE_INT_SAT
-	uint2  sum_result = 0;
+	uint4  sum_result = 0;
 #else
     float4 sum_result = 0;
 #endif
@@ -474,8 +474,8 @@ float4 RenderSATVerticalPS(float4 vPos : SV_Position) : SV_Target0
     }
 
 #ifdef USE_INT_SAT
-	uint2  ret = sum_result;
-	return uint4( ret.x, ret.y, 0, 0 );
+	uint4  ret = sum_result;
+	return uint4( ret.x, ret.y, ret.z, ret.w );
 #else
 	float4 ret = sum_result;
 	return ret;
@@ -496,16 +496,22 @@ uint4 ConvertDepth2SATPS(float4 vPos : SV_Position) : SV_Target0
     
     float dx = DepthTex0.Load(uint3(vPos.x+1,vPos.y,0)) - fDepth;
     float dy = DepthTex0.Load(uint3(vPos.x,vPos.y+1,0)) - fDepth;
+	float fDepth_ = fDepth;
  #ifdef EVSM
 	fDepth = exp(EXPC*fDepth);
+	fDepth_ = exp(-EXPC*(fDepth_));
  #endif   
     
     float moment2 = fDepth * fDepth;
+    float moment2_ = fDepth_ * fDepth_;
    
     uint  uDepth  = round( fDepth * g_NormalizedFloatToSATUINT );
     uint  uMoment = round( moment2 * g_NormalizedFloatToSATUINT );
     
-    return uint4(uDepth, uMoment, uDepth, uDepth);
+    uint  uDepth_  = round( fDepth_ * g_NormalizedFloatToSATUINT );
+    uint  uMoment_ = round( moment2_ * g_NormalizedFloatToSATUINT );
+    
+    return uint4(uDepth, uMoment, uDepth_, uMoment_);
 }
 #else
 #ifdef DISTRIBUTE_PRECISION

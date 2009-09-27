@@ -35,6 +35,7 @@
 #define IDC_LIGHT_ZF 31
 #define IDC_LIGHT_FOV 32
 #define IDC_SHOW_3DWIDGET 33
+#define IDC_BDUMP_LIGHT_PAR 34
 
 #define IDC_STATIC 100
 #define IDC_ANIMATE 101
@@ -82,6 +83,8 @@ struct Biases
 //#define DISTRIBUTE_PRECISION
 #define BILINEAR_INT_SMP
 #define USE_LINEAR_Z
+
+//#define DUAL_EVSM
 
 #include "FirstScript.h"
 

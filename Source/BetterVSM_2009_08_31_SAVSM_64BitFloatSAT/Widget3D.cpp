@@ -1,5 +1,6 @@
 #include "Widget3D.h"
 #include <S3UTcamera.h>
+#include <math.h>
 
 Widget3D::Widget3D()
 {
@@ -18,6 +19,7 @@ HRESULT Widget3D::OnD3D10CreateDevice( ID3D10Device* pDev10, const DXGI_SURFACE_
         MessageBoxA(NULL, (char *)pErrors->GetBufferPointer(), "Compilation error", MB_OK);
         exit(0);
     }
+	ReadParameters();
 	return S_OK;
 
 }
@@ -25,19 +27,21 @@ HRESULT Widget3D::OnD3D10CreateDevice( ID3D10Device* pDev10, const DXGI_SURFACE_
 void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
 {
 	HRESULT hr;
-		//Draw Light Source
+	//Draw Light Source
 	
 	D3DXMATRIX mTmp, mWorldView, mWorldViewProj;
 	D3DXMatrixInverse(&mTmp, NULL, par_CameraRef.GetWorldMatrix());
 	D3DXMatrixMultiply(&mWorldView, &mTmp, par_CameraRef.GetViewMatrix());
 	D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, par_CameraRef.GetProjMatrix());
 
+	m_vLight = *par_LCameraRef.GetEyePt();
+	m_fLightSize = par_fFilterSize;
+
 	D3DXMATRIX mLightViewInv;
 	D3DXMatrixInverse(&mLightViewInv, NULL, par_LCameraRef.GetViewMatrix());
 	D3DXMATRIX mLightViewInvWorldViewProj;
 	D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
 	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
-	//V(g_ABP.m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mWorldViewProj));
 	
 
 	D3D10_RASTERIZER_DESC RasterizerState;
@@ -230,7 +234,6 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 	D3DXMATRIX mLightViewInvWorldViewProj;
 	D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
 	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
-	//V(g_ABP.m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mWorldViewProj));
 	
 
 	D3D10_RASTERIZER_DESC RasterizerState;
@@ -264,6 +267,9 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 	float w = mat_light_proj._11;
 	float light_zn = par_LCameraRef.GetNearClip();
 	float light_zf = par_LCameraRef.GetFarClip();
+	m_fCtrledLightZn = light_zn;
+	m_fCtrledLightZf = light_zf;
+	m_fCtrledLightFov = atan(1/w) * 2;
 
 	float near_plane_width = 2*light_zn/w;
 	float far_plane_width = near_plane_width * light_zf / light_zn;
@@ -335,14 +341,50 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 }
 
 
-void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize )
+void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize, bool doRecord )
 {
 	DrawLightSource( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
 	DrawAxis( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
 	DrawFrustum( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
+	if( doRecord )
+		DumpParameters();
 }
 
 void Widget3D::OnD3D10DestroyDevice()
 {
 	SAFE_RELEASE(m_pEffect);
+}
+
+void Widget3D::DumpParameters()
+{
+	FILE *fp = fopen("SceneParameters.txt","w");
+
+	fprintf( fp, "%f %f %f\n", m_vLight.x,m_vLight.y,m_vLight.z );
+	fprintf( fp, "%f\n", m_fLightSize );
+	fprintf( fp, "%f\n",m_fCtrledLightZn );
+	fprintf( fp, "%f\n",m_fCtrledLightZf );
+	fprintf( fp, "%f\n",m_fCtrledLightFov );
+
+	fclose( fp );
+}
+
+void Widget3D::ReadParameters()
+{
+	FILE *fp = fopen("SceneParameters.txt","r");
+	
+	fscanf( fp, "%f %f %f\n", &m_vLight.x,&m_vLight.y,&m_vLight.z );
+	fscanf( fp, "%f\n", &m_fLightSize );
+	fscanf( fp, "%f\n", &m_fCtrledLightZn );
+	fscanf( fp, "%f\n", &m_fCtrledLightZf );
+	fscanf( fp, "%f\n", &m_fCtrledLightFov );
+	fclose( fp );
+}
+
+void Widget3D::ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov)
+{
+	vLight = m_vLight;
+	fLightSize = m_fLightSize;
+	fCtrledLightZn   = m_fCtrledLightZn; 
+	fCtrledLightZf   = m_fCtrledLightZf; 
+	fCtrledLightFov  = m_fCtrledLightFov;
 }
