@@ -66,6 +66,7 @@ static RenderFinal g_Final;
 static InputBuffer g_GBuffer;
 static FullRTQuadRender g_ScrQuadRender("FinalPass");
 static int ShadowAlgorithm = STD_VSM;
+static int OldShadowAlgorithm = STD_VSM;
 static float g_fDepthBiasDefault = 0.1;
 static float g_fLightZn = 0;
 static float g_fCtrledLightZn = 2.8;//user controlled zn
@@ -447,19 +448,20 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
         g_D3DSettingsDlg.SetActive( !g_D3DSettingsDlg.IsActive() );
         break;
     case IDC_LIGHT_SIZE:
-        g_fFilterSizeCtrl = (float)g_SampleUI.GetSlider(IDC_LIGHT_SIZE)->GetValue() / 100.0;
+        g_Widget.SetLightSize((float)g_SampleUI.GetSlider(IDC_LIGHT_SIZE)->GetValue() / 100.0 );
         break;
     case IDC_SHADOW_ALGORITHM:
-		ShadowAlgorithm = ((CDXUTComboBox*)pControl)->GetSelectedIndex();
+        OldShadowAlgorithm = ShadowAlgorithm;
+        ShadowAlgorithm = ((CDXUTComboBox*)pControl)->GetSelectedIndex();
         break;
 	case IDC_LIGHT_ZN:
-		g_fCtrledLightZn = (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/5;
+        g_Widget.SetLightZn( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/5 );
 		break;
 	case IDC_LIGHT_ZF:
-		g_fCtrledLightZf = (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+10;
+        g_Widget.SetLightZf( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+10 );
 		break;
 	case IDC_LIGHT_FOV:
-		g_fCtrledLightFov = (float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/100;
+        g_Widget.SetLightFov((float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/10);
 		break;
 	case IDC_fDefaultDepthBias:
 		g_fDefaultDepthBias = (float)g_SampleUI.GetSlider(IDC_fDefaultDepthBias)->GetValue()/4000.0;
@@ -539,19 +541,37 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
     g_SampleUI.GetSlider(IDC_LIGHT_SIZE)->SetValue((int)(g_fFilterSize * 200.0));
 	g_SampleUI.GetComboBox(IDC_SHADOW_ALGORITHM)->SetSelectedByIndex(ssmap.bAccurateShadow == true ? 0 : 1);
 
-	g_BPGI.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+    switch( ShadowAlgorithm )
+    {
+    case    STANDARD_BP:
+        	g_ABP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    BP_MSSM_KERNEL:
+	        g_BPMSSMKernel.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    STD_VSM:
+	        g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    HIR_EDGE_EXTRACTION:
+	        g_HEEBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    HIR_BP:
+        	g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    BP_GI:
+        	g_BPGI.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    case    STD_PCSS:
+        	g_PCSS.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+            break;
+    default:
+            break;
+    }
 
-	g_ABP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_NoShadow.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_BPMSSMKernel.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_PCSS.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-	g_HEEBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_Final.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_GBuffer.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 	g_ScrQuadRender.OnD3D10CreateDevice(g_ABP.m_pEffect,pDev10,pBackBufferSurfaceDesc,pUserContext);
-
 	ssmap.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 
 	g_Widget.OnD3D10CreateDevice( pDev10,pBackBufferSurfaceDesc,pUserContext );
@@ -570,7 +590,7 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 			exit(0);
 		}
 		D3D10_PASS_DESC PassDesc;
-		V_RETURN(g_BPGI.m_pEffect->GetTechniqueByName(SILHOUETTE_BP_SCENE_TECH)->GetPassByIndex(0)->GetDesc(&PassDesc));
+		V_RETURN(g_NoShadow.m_pEffect->GetTechniqueByName("RenderAcc")->GetPassByIndex(0)->GetDesc(&PassDesc));
 		V_RETURN(pDev10->CreateInputLayout(scenemeshlayout, 3, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &g_pMaxLayout));
 	}
 
@@ -652,15 +672,35 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
     g_SampleUI.SetLocation( pBackBufferSurfaceDesc->Width-300, pBackBufferSurfaceDesc->Height-700 );
     g_SampleUI.SetSize( 170, 300 );
 
-	g_ABP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_BPMSSMKernel.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+    switch( ShadowAlgorithm )
+    {
+    case    STANDARD_BP:
+        	g_ABP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    BP_MSSM_KERNEL:
+	        g_BPMSSMKernel.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    STD_VSM:
+	        g_StdVSM.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    HIR_EDGE_EXTRACTION:
+	        g_HEEBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    HIR_BP:
+	        g_HBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    BP_GI:
+	        g_BPGI.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    case    STD_PCSS:
+	        g_PCSS.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+            break;
+    default:
+            break;
+    }
+
 	g_NoShadow.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_BPGI.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
 	g_Final.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_HBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_HEEBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_StdVSM.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
-	g_PCSS.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
 	g_GBuffer.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
 	//light management
 	D3D10_TEXTURE2D_DESC rtDesc_scrpos =
@@ -698,154 +738,75 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext)
 {
     HRESULT hr;
+    //dont delete, used no only here
+   	const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc = DXUTGetDXGIBackBufferSurfaceDesc();
+
+    if( ShadowAlgorithm != OldShadowAlgorithm )
+    {
+        OldShadowAlgorithm = ShadowAlgorithm;
+        switch( ShadowAlgorithm )
+        {
+        case    STANDARD_BP:
+                g_ABP.OnD3D10DestroyDevice();
+                break;
+        case    BP_MSSM_KERNEL:
+	            g_BPMSSMKernel.OnD3D10DestroyDevice();
+                break;
+        case    STD_VSM:
+	            g_StdVSM.OnD3D10DestroyDevice();
+                break;
+        case    HIR_EDGE_EXTRACTION:
+	            g_HEEBP.OnD3D10DestroyDevice();
+                break;
+        case    HIR_BP:
+                g_HBP.OnD3D10DestroyDevice();
+                break;
+        case    BP_GI:
+                g_BPGI.OnD3D10DestroyDevice();
+                break;
+        case    STD_PCSS:
+                g_PCSS.OnD3D10DestroyDevice();
+                break;
+        default:
+                break;
+        };
+		switch( ShadowAlgorithm )
+        {
+        case    STANDARD_BP:
+                g_ABP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_ABP.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    BP_MSSM_KERNEL:
+	            g_BPMSSMKernel.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_BPMSSMKernel.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    STD_VSM:
+	            g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_StdVSM.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    HIR_EDGE_EXTRACTION:
+	            g_HEEBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_HEEBP.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    HIR_BP:
+                g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_HBP.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    BP_GI:
+                g_BPGI.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_BPGI.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        case    STD_PCSS:
+                g_PCSS.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_PCSS.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+                break;
+        default:
+                break;
+        };
+    }
+
 	//begin  light and view pos management
-	{
-		D3DXVECTOR3 vEye = *g_Camera.GetEyePt();
-		float x_incre = 0.1;
-		static float total_x_incre = 0;
-		float z_incre = 0.1;
-		static float total_z_incre = 0;
-		float y_incre = 0.15;
-		static float total_y_incre = 0;
-		static float move_dir = 0;
-		static float animation_timer = 0;
-		if( g_CameraMove )
-		{
-			if( move_dir == 0 )
-			{
-				vEye.y -= y_incre * 5;
-				vEye.x -= x_incre*0.35*1.5*5;
-				D3DXVECTOR3 vLookAt = *g_Camera.GetLookAtPt();
-				g_Camera.SetViewParams(&vEye, &vLookAt);
-				total_y_incre += y_incre * 5;
-				if( total_y_incre >50)
-				{
-					move_dir = 1;
-				}
-			}
-
-			if( move_dir == 1 )
-			{
-
-				animation_timer += 0.1;
-				if( animation_timer > 25 )
-				{
-					move_dir = 2;
-					animation_timer = 0;
-				}
-			}
-
-			if( move_dir == 2 )
-			{
-				vEye.x += x_incre * 6;
-				D3DXVECTOR3 vLookAt = *g_Camera.GetLookAtPt();
-				g_Camera.SetViewParams(&vEye, &vLookAt);
-				total_x_incre += x_incre * 6;
-				if( total_x_incre > 17 )
-				{
-					move_dir = 3;
-					total_x_incre = 0;
-				}
-			}
-			if( move_dir == 3 )
-			{
-				vEye.z += z_incre * 3 * 2;
-				vEye.y += y_incre* 1.5 * 1.5 * 2;
-				D3DXVECTOR3 vLookAt = *g_Camera.GetLookAtPt();
-				g_Camera.SetViewParams(&vEye, &vLookAt);
-				total_z_incre += z_incre * 3 * 2;
-				if( total_z_incre > 25 )
-				{
-					move_dir = 8;
-					total_z_incre = 0;
-				}
-			}
-			if( move_dir == 9 )
-			{
-
-				animation_timer += 0.1;
-				if( animation_timer > 3 )
-				{
-					move_dir = 5;
-					animation_timer = 0;
-				}
-			}
-
-			if( move_dir == 4 )
-			{
-				vEye.x -= x_incre * 6;
-				D3DXVECTOR3 vLookAt = *g_Camera.GetLookAtPt();
-				g_Camera.SetViewParams(&vEye, &vLookAt);
-				total_x_incre += x_incre * 6;
-				if( total_x_incre > 20 )
-				{
-					move_dir = 5;
-					total_x_incre = 0;
-				}
-			}
-			if( move_dir == 0.5 )
-			{
-
-				animation_timer += 0.5;
-				if( animation_timer > 48 )
-				{
-					move_dir = 9;
-					animation_timer = 0;
-				}
-			}
-
-			if( move_dir == 5 )
-			{
-				vEye.z -= z_incre * 1.5 * 2;
-				vEye.y -= y_incre*1.2*1.5 * 0.5 * 2;
-				vEye.x -= x_incre * 0.1 * 2;
-				D3DXVECTOR3 vLookAt = *g_Camera.GetLookAtPt();
-				g_Camera.SetViewParams(&vEye, &vLookAt);
-				total_z_incre += z_incre * 1.5 * 2;
-				if( total_z_incre > 25 )
-				{
-					move_dir = 0.5;
-					total_z_incre = 0;
-				}
-			}
-			if( move_dir == 6 )
-			{
-				move_dir = 7;
-
-			}
-
-			if( move_dir == 7 )
-			{
-
-				move_dir = 0.5;
-			}
-
-			if( move_dir == 8 )
-			{
-
-				animation_timer += 0.1;
-				if( animation_timer > 10 )
-				{
-					move_dir = 4;
-					animation_timer = 0;
-				}
-			}
-
-
-
-		}
-
-		if( move_dir == 7 || move_dir == 0.5)
-			g_LightVary = true;
-		else 
-			g_LightVary = false;
-
-		if( move_dir == 8 )
-			g_LightMove = true;
-		else 
-			g_LightMove = false;
-
-		g_LightVary = false;
+	{		
 		static double old_fTime = 0.001;
 		fTime = old_fTime;
 		old_fTime += 0.02;
@@ -854,15 +815,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 		static double stop_time = 0;
 		static double total_stop_time = 0;
 		double tmp = fTime;
-
 		unsigned iSta = g_SampleUI.GetCheckBox(IDC_STATIC)->GetChecked();
-		if( (move_dir == 1 && animation_timer>2)||(move_dir==9) ) 
-			iSta = 0;
-		else if( move_dir == 1 && animation_timer>47.5 )
-			iSta = 1;
-		else if( move_dir == 2 )
-			iSta = 1;
-
 		if( 0 == old_iSta  && 1 == iSta )//turn to be static
 		{
 			stop_time = fTime - total_stop_time;
@@ -887,7 +840,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	D3DXMatrixMultiply(&mWorldView, &mTmp, g_CameraRef.GetViewMatrix());
 
 	// correct near/far clip planes according to camera location
-	const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc = DXUTGetDXGIBackBufferSurfaceDesc();
 	D3DXVECTOR3 vBox[2];
 	float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
 	g_CameraRef.SetProjParams(D3DX_PI/3, fAspectRatio, 0.1, 500);

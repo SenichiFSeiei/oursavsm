@@ -145,16 +145,26 @@ HRESULT BPGlobalIllumination::OnD3D10CreateDevice(ID3D10Device *pDev10, const DX
 
 void	BPGlobalIllumination::OnD3D10SwapChainReleasing( void* pUserContext )
 {
-	m_pScreenPixelPos->OnD3D10SwapChainReleasing(pUserContext);
-	m_pScreenPixelPosHalf->OnD3D10SwapChainReleasing(pUserContext);
-	m_pScreenPixelPosQuarter->OnD3D10SwapChainReleasing(pUserContext);
-	m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
-	m_pHSMKernelHalf->OnD3D10SwapChainReleasing(pUserContext);
-	m_pHSMKernelQuarter->OnD3D10SwapChainReleasing(pUserContext);
-	m_pFloorVBufferOrigin->OnD3D10SwapChainReleasing(pUserContext);
-	m_pFloorVBufferHalf->OnD3D10SwapChainReleasing(pUserContext);
-	m_pFloorVBufferQuarter->OnD3D10SwapChainReleasing(pUserContext);
-	m_pDepthBuffer->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pScreenPixelPos->OnD3D10SwapChainReleasing(pUserContext);
+	if( m_pScreenPixelPos )
+        m_pScreenPixelPosHalf->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pScreenPixelPosQuarter->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pHSMKernelHalf->OnD3D10SwapChainReleasing(pUserContext);
+	if( m_pScreenPixelPos )
+        m_pHSMKernelQuarter->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pFloorVBufferOrigin->OnD3D10SwapChainReleasing(pUserContext);
+	if( m_pScreenPixelPos )
+        m_pFloorVBufferHalf->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pFloorVBufferQuarter->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pDepthBuffer->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 
@@ -477,28 +487,38 @@ void BPGlobalIllumination::OnD3D10DestroyDevice()
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
-	m_pScreenPixelPos->OnD3D10DestroyDevice();
+    if( m_pScreenPixelPos )
+	    m_pScreenPixelPos->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pScreenPixelPos);
-	m_pScreenPixelPosHalf->OnD3D10DestroyDevice();
+    if( m_pScreenPixelPosHalf )
+	    m_pScreenPixelPosHalf->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pScreenPixelPosHalf);
-	m_pScreenPixelPosQuarter->OnD3D10DestroyDevice();
+    if( m_pScreenPixelPosQuarter )
+	    m_pScreenPixelPosQuarter->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pScreenPixelPosQuarter);
 
-	m_pHSMKernel->OnD3D10DestroyDevice();
+    if( m_pHSMKernel )
+	    m_pHSMKernel->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernel);
-	m_pHSMKernelHalf->OnD3D10DestroyDevice();
+    if( m_pHSMKernelHalf )
+	    m_pHSMKernelHalf->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernelHalf);
-	m_pHSMKernelQuarter->OnD3D10DestroyDevice();
+    if( m_pHSMKernelQuarter )
+	    m_pHSMKernelQuarter->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernelQuarter);
 
-	m_pFloorVBufferOrigin->OnD3D10DestroyDevice();
-	m_pFloorVBufferHalf->OnD3D10DestroyDevice();
-	m_pFloorVBufferQuarter->OnD3D10DestroyDevice();
+    if( m_pFloorVBufferOrigin )
+	    m_pFloorVBufferOrigin->OnD3D10DestroyDevice();
+    if( m_pFloorVBufferHalf )
+	    m_pFloorVBufferHalf->OnD3D10DestroyDevice();
+    if( m_pFloorVBufferQuarter )
+	    m_pFloorVBufferQuarter->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pFloorVBufferOrigin);
 	SAFE_DELETE(m_pFloorVBufferHalf);
 	SAFE_DELETE(m_pFloorVBufferQuarter);
 
-	m_pDepthBuffer->OnD3D10DestroyDevice();
+    if( m_pDepthBuffer )
+	    m_pDepthBuffer->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pDepthBuffer);
 
 }

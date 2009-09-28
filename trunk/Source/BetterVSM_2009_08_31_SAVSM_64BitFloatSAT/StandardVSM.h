@@ -94,7 +94,8 @@ HRESULT StdVSM::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DES
 }
 void StdVSM::OnD3D10SwapChainReleasing( void* pUserContext )
 {
-	m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pShadowResult )
+	    m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
 }
 HRESULT StdVSM::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
 {
@@ -222,7 +223,8 @@ void StdVSM::OnD3D10DestroyDevice( void* pUserContext )
 {
 	OnD3D10SwapChainReleasing(NULL);
 
-	m_pShadowResult->OnD3D10DestroyDevice();
+    if( m_pShadowResult )
+	    m_pShadowResult->OnD3D10DestroyDevice();
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 }

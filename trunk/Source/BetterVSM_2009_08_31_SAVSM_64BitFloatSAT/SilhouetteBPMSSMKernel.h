@@ -84,8 +84,10 @@ HRESULT SilhouetteBPMSSMKernel::OnD3D10CreateDevice(ID3D10Device *pDev10, const 
 }
 void	SilhouetteBPMSSMKernel::OnD3D10SwapChainReleasing( void* pUserContext )
 {
-	m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
-	m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pHSMKernel )
+	    m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pShadowResult )
+	    m_pShadowResult->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT SilhouetteBPMSSMKernel::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -219,10 +221,12 @@ void SilhouetteBPMSSMKernel::OnD3D10DestroyDevice()
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
-
-	m_pHSMKernel->OnD3D10DestroyDevice();
+    
+    if( m_pHSMKernel )
+	    m_pHSMKernel->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernel);
-	m_pShadowResult->OnD3D10DestroyDevice();
+    if( m_pShadowResult )
+	    m_pShadowResult->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pShadowResult);
 
 }
