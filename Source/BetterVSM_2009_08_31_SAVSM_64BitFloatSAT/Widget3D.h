@@ -34,6 +34,11 @@ public:
 	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize, bool doRecord = false );
 	void	ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov);
 	~Widget3D(){};
+
+    void SetLightSize( float light_size ){ m_fLightSize = light_size; }
+    void SetLightZn( float light_zn ){ m_fCtrledLightZn = light_zn; }
+    void SetLightZf( float light_zf ){ m_fCtrledLightZf = light_zf; }
+    void SetLightFov( float light_fov ){ m_fCtrledLightFov = light_fov; }
 private:
 	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );

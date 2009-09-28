@@ -88,9 +88,12 @@ HRESULT HierBP::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DES
 }
 void	HierBP::OnD3D10SwapChainReleasing( void* pUserContext )
 {
-	m_pScreenPixelPos->OnD3D10SwapChainReleasing(pUserContext);
-	m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
-	m_pDepthBuffer->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pScreenPixelPos )
+	    m_pScreenPixelPos->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pHSMKernel )
+	    m_pHSMKernel->OnD3D10SwapChainReleasing(pUserContext);
+    if( m_pDepthBuffer )
+	    m_pDepthBuffer->OnD3D10SwapChainReleasing(pUserContext);
 }
 
 HRESULT HierBP::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
@@ -240,13 +243,16 @@ void HierBP::OnD3D10DestroyDevice( void* pUserContext )
     SAFE_RELEASE(m_pEffect);
     SAFE_RELEASE(m_pMaxLayout);
 	SAFE_RELEASE(m_pAreaTextureRV);
-	m_pScreenPixelPos->OnD3D10DestroyDevice();
+	if( m_pScreenPixelPos )
+        m_pScreenPixelPos->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pScreenPixelPos);
 
-	m_pHSMKernel->OnD3D10DestroyDevice();
+    if( m_pHSMKernel )
+	    m_pHSMKernel->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pHSMKernel);
 
-	m_pDepthBuffer->OnD3D10DestroyDevice();
+    if( m_pDepthBuffer )
+	    m_pDepthBuffer->OnD3D10DestroyDevice();
 	SAFE_DELETE(m_pDepthBuffer);
 
 }
