@@ -204,7 +204,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	float Zmin = 0;
 	{
 		float fPartLit = 0, unocc_part = 0;
-		int    light_per_row = 1;
+		int    light_per_row = 8;
 		est_occ_depth_and_chebshev_ineq( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 		[branch]if( unocc_part == (light_per_row * light_per_row) )
 			return float4(1,1,1,1);
@@ -224,7 +224,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		return float4( 1,1,1,1 );
 			
 	float fPartLit = 0, unocc_part = 0;
-	int    light_per_row = 1;
+	int    light_per_row = 8;
 	float Ex = est_occ_depth_and_chebshev_ineq( 0.0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
