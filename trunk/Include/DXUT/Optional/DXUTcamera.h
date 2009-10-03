@@ -262,6 +262,9 @@ public:
     const D3DXMATRIX* GetWorldMatrix() const { return &m_mWorld; }
     void SetWorldMatrix( D3DXMATRIX &mWorld ) { m_mWorld = mWorld; m_bDragSinceLastUpdate = true; }
 
+	//Add for moving light
+	void MoveLight( D3DXVECTOR3 *pvOffset ){ m_vEye += *pvOffset; m_vLookAt += *pvOffset; }
+
 protected:
     CD3DArcBall  m_WorldArcBall;
     CD3DArcBall  m_ViewArcBall;
