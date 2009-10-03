@@ -269,7 +269,6 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 	float light_zf = par_LCameraRef.GetFarClip();
 	m_fCtrledLightZn = light_zn;
 	m_fCtrledLightZf = light_zf;
-	m_fCtrledLightFov = atan(1/w) * 2;
 
 	float near_plane_width = 2*light_zn/w;
 	float far_plane_width = near_plane_width * light_zf / light_zn;
