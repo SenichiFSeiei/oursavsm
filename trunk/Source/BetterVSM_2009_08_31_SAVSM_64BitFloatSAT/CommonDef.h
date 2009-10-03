@@ -72,7 +72,7 @@ struct Biases
 #define STANDARD_BP 0
 #define BP_MSSM_KERNEL	1
 #define STD_VSM 2
-#define HIR_EDGE_EXTRACTION 3
+#define MIP_VSM 3
 #define HIR_BP 4
 #define BP_GI 5
 #define NO_SHADOW_ALGORITHM 6

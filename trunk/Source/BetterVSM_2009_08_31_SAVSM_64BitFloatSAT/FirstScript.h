@@ -1,7 +1,7 @@
 #ifndef FIRSTSCRIPT
 #define FIRSTSCRIPT
 
-#define DEPTH_RES 512
+#define DEPTH_RES 1024
 #define N_LEVELS 10
 //#define RES_REV float g_fResRev[N_LEVELS] = { 1./512, 1./256, 1./128, 1./64, 1./32, 1./16, 1./8, 1./4, 1./2 };
 #define RES_REV float g_fResRev[N_LEVELS] = { 1./1024, 1./512, 1./256, 1./128, 1./64, 1./32, 1./16, 1./8, 1./4, 1./2 };
@@ -18,9 +18,9 @@
 
 #define SILHOUETTE_BP_EFFECT_FILE_NAME L"SoftShadows.fx"
 #define SILHOUETTE_BP_MSSM_KERNEL_EFFECT_FILE_NAME L"SilhouetteBPMSSMKernel.fx"
+#define MIP_VSM_EFFECT_FILE_NAME L"MipVSM.fx"
 #define STANDARD_VSM_EFFECT_FILE_NAME L"StandardVSM.fx"
 #define PCSS_EFFECT_FILE_NAME L"PCSS.fx"
-#define HIERARCHAL_EDGE_EXTRACTION_EFFECT_FILE_NAME L"HierarchalEdgeExtraction.fx"
 #define HIERBP_FILE_NAME L"HierBP.fx"
 #define BPGI_EFFECT_FILE_NAME L"BPGI.fx"
 #define RENDER_FINAL_FILE_NAME L"FinalPass.fx"
