@@ -279,6 +279,7 @@ static void RenderText()
     txtHelper.SetForegroundColor( D3DXCOLOR( 1.0f, 0.0f, 0.0f, 1.0f ) );
     txtHelper.DrawTextLine( DXUTGetFrameStats(true) );
     txtHelper.DrawTextLine( DXUTGetDeviceStats() );
+	txtHelper.DrawTextLine( L"use W A S D Q E to move camera, uncheck MoveCamera and then use UP DOWN LEFT RIGHT R F to move light" );
     txtHelper.End();
 }
 
