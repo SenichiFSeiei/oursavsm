@@ -68,6 +68,8 @@ static FullRTQuadRender g_ScrQuadRender("FinalPass");
 static int ShadowAlgorithm = STD_VSM;
 static int OldShadowAlgorithm = STD_VSM;
 static float g_fDepthBiasDefault = 0.1;
+static float g_f3rdDepthDelta = 0.037;
+static float g_f1stDepthDelta = 0.05;
 static float g_fLightZn = 0;
 static float g_fCtrledLightZn = 2.8;//user controlled zn
 static float g_fCtrledLightZf = 16;
@@ -215,58 +217,22 @@ static void InitApp()
 	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDefaultDepthBias", 35, iY += 25, 125, 22 );
 	g_SampleUI.AddSlider(IDC_fDefaultDepthBias, 160, iY, 124, 22, 0, 100, 40 );
 	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasHammer", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasHammer, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasLeftForearm", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasLeftForearm, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasRightForearm", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasRightForearm, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasLeftShoulder", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasLeftShoulder, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasRightShoulder", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasRightShoulder, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasBlackPlate", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasBlackPlate, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasHelmet", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasHelmet, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasEyes", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasEyes, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasBelt", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasBelt, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasLeftThigh", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasLeftThigh, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasRightThigh", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasRightThigh, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasLeftShin", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasLeftShin, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasRightShin", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasRightShin, 160, iY, 124, 22, 0, 100, 40 );
-	
-	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"fDepthBiasObject0", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_fDepthBiasObject0, 160, iY, 124, 22, 0, 100, 40 );
+	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"3rd depth delta", 35, iY += 25, 125, 22 );
+	g_SampleUI.AddSlider(IDC_BIAS_3RD_DEPTH, 160, iY, 124, 22, 0, 100, 40 );
 
-    g_SampleUI.AddCheckBox( IDC_BTEXTURED, L"Enable Texturing", 35, iY += 25, 124, 22, false);
+	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"1st depth delta", 35, iY += 25, 125, 22 );
+	g_SampleUI.AddSlider(IDC_BIAS_3RD_DEPTH, 160, iY, 124, 22, 0, 100, 40 );
+
+    g_SampleUI.AddCheckBox( IDC_BTEXTURED, L"Enable Texturing", 15, iY += 25, 124, 22, false);
 	g_SampleUI.AddCheckBox( IDC_SHOW_3DWIDGET, L"Show 3D Widget", 150, iY, 124, 22, true);
-    g_SampleUI.AddCheckBox( IDC_BMOVECAMERA, L"Move Camera", 35, iY += 25, 124, 22, true);
+    g_SampleUI.AddCheckBox( IDC_BMOVECAMERA, L"Move Camera", 15, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 150, iY, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 35, iY += 25, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_BDUMP_LIGHT_PAR, L"Dump Light Para", 150, iY += 25, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 35, iY += 25, 124, 22, true);
-    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 35, iY += 25, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 35, iY += 25, 124, 22, true);
-	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 35, iY += 25, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 15, iY+=25, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_BDUMP_LIGHT_PAR, L"Dump Light Para", 150, iY, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 15, iY += 25, 124, 22, true);
+    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 150, iY, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 15, iY += 25, 124, 22, true);
+	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 150, iY, 124, 22, false);
 
 
 
@@ -625,6 +591,12 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
 		break;
 	case IDC_NUM_LIGHT_SAMPLE:
 		g_nNumLightSample = 2*(int)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue();
+		break;
+	case IDC_BIAS_3RD_DEPTH:
+		g_f3rdDepthDelta = (float)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue()/500;
+		break;
+	case IDC_BIAS_1ST_DEPTH:
+		g_f1stDepthDelta = (float)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue()/500;
 		break;
     }    
 }
@@ -1156,6 +1128,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 			{
 				V(g_StdVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
 
+				g_StdVSM.set_bias( g_f3rdDepthDelta, g_f1stDepthDelta );
 				g_StdVSM.set_parameters( para,p_RTV,p_SRV,&light_color[0] );
 				g_StdVSM.set_input_buffer( &g_GBuffer );
 				g_StdVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);

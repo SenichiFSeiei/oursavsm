@@ -46,6 +46,11 @@ public:
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
 	~StdVSM();
+	void set_bias( float f3rdDepthDelta, float f1stDepthDelta ) { m_f3rdDepthDelta = f3rdDepthDelta, m_f1stDepthDelta = f1stDepthDelta; }
+
+	float m_f3rdDepthDelta;
+	float m_f1stDepthDelta;
+
 
 
 
@@ -209,6 +214,9 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc = DXUTGetDXGIBackBufferSurfaceDesc();
 	V(m_pEffect->GetVariableByName("fScreenWidth")->AsScalar()->SetFloat(pBackBufferSurfaceDesc->Width));
 	V(m_pEffect->GetVariableByName("fScreenHeight")->AsScalar()->SetFloat(pBackBufferSurfaceDesc->Height));
+	
+	V(m_pEffect->GetVariableByName("f3rdDepthDelta")->AsScalar()->SetFloat( m_f3rdDepthDelta ));
+	V(m_pEffect->GetVariableByName("f1stDepthDelta")->AsScalar()->SetFloat( m_f1stDepthDelta ));
 	
 //releasing issue
 	pDev10->OMSetRenderTargets(1,&m_pRTV,NULL);
