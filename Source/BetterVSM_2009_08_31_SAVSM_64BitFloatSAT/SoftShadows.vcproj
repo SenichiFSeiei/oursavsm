@@ -484,14 +484,14 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="HierarchalEdgeExtraction"
+				Name="MipVSM"
 				>
 				<File
-					RelativePath=".\HierarchalEdgeExtraction.fx"
+					RelativePath=".\MipVSM.fx"
 					>
 				</File>
 				<File
-					RelativePath=".\HierarchalEdgeExtraction.h"
+					RelativePath=".\MipVSM.h"
 					>
 				</File>
 			</Filter>

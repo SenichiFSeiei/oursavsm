@@ -1,7 +1,7 @@
 #include "commondef.h"
 
 #define EVSM
-#define EXPC 10
+#define EXPC 1
 SamplerState PointSampler
 {
     Filter = MIN_MAG_MIP_POINT;

@@ -50,7 +50,7 @@ cbuffer cb0 : register(b1)
 
 float4 RenderDepthVS(float3 vPos : POSITION) : SV_Position
 {
-    if( abs(vPos.y) == 0.0 ) vPos.y = -0.5;//ignore floor when rendering shadow map, this is a dirty trick which effectively avoid depth bias when rendering front face in shadow map
+    //if( abs(vPos.y) == 0.0 ) vPos.y = -0.5;//ignore floor when rendering shadow map, this is a dirty trick which effectively avoid depth bias when rendering front face in shadow map
     return mul(float4(vPos, 1), mViewProj);
 }
 float4 ConvertDepthVS(uint iv : SV_VertexID) : SV_Position
@@ -61,6 +61,11 @@ float4 ConvertDepthVS(uint iv : SV_VertexID) : SV_Position
 float2 ConvertDepth2PS(float4 vPos : SV_Position) : SV_Target0
 {
     float fDepth = DepthTex0.Load(uint3(vPos.x, vPos.y, 0));
+    //converted to linear depth
+   	fDepth = 1. / (fDepth * mLightProjClip2TexInv[2][3] + mLightProjClip2TexInv[3][3]);
+	fDepth -= Zn;
+	fDepth /= (Zf-Zn);
+
     return float2(fDepth, fDepth);
 }
 float2 ConvertDepth2PSWithAdj(float4 vPos : SV_Position) : SV_Target0
@@ -179,12 +184,14 @@ technique10 ReworkDepth2
 float4 ConvertDepth2VSMPS(float4 vPos : SV_Position) : SV_Target0
 {
     float fDepth = DepthTex0.Load(uint3(vPos.x, vPos.y, 0));
+   	fDepth = 1. / (fDepth * mLightProjClip2TexInv[2][3] + mLightProjClip2TexInv[3][3]);
+	fDepth -= Zn;
+	fDepth /= (Zf-Zn);
+
+    fDepth = exp( EXPC * fDepth );
     float squared_depth = fDepth * fDepth;
     
-    float dx = DepthTex0.Load(uint3(vPos.x+1,vPos.y,0)) - fDepth;
-    float dy = DepthTex0.Load(uint3(vPos.x,vPos.y+1,0)) - fDepth;
-    
-    float moment2 = fDepth * fDepth + 0.25 *(dx*dx+dy*dy);
+    float moment2 = fDepth * fDepth;
     
     return float4(fDepth, moment2, fDepth, fDepth);
 }

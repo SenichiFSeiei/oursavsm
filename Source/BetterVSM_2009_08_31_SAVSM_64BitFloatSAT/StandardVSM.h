@@ -172,10 +172,12 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	//-------------------------------------------------------------------------------------------------------------------------
 
 	//Originally these are set inside soft shadow map class, I moved them our for more neat design
-    V(m_pEffect->GetVariableByName("TexPreviousResult")->AsShaderResource()->SetResource(m_pPreResult));
+	//here we only draw one light some the line below is commented
+    //V(m_pEffect->GetVariableByName("TexPreviousResult")->AsShaderResource()->SetResource(m_pPreResult));
 	V(m_pEffect->GetVariableByName("SatVSM")->AsShaderResource()->SetResource(ssmap.m_pSatSRViews[6%SSMap::NUM_SAT_TMP_TEX]));
-    V(m_pEffect->GetVariableByName("TexDepthMap")->AsShaderResource()->SetResource(ssmap.m_pDepthSRView[0]));
-	
+    //V(m_pEffect->GetVariableByName("TexDepthMap")->AsShaderResource()->SetResource(ssmap.m_pDepthSRView[0]));
+	V(m_pEffect->GetVariableByName("DepthMip2")->AsShaderResource()->SetResource(ssmap.m_pDepthMip2SRView));
+
 	D3DXMATRIX mClip2Tex;
     mClip2Tex = D3DXMATRIX( 0.5,    0, 0,   0,
 						    0, -0.5, 0,   0,
