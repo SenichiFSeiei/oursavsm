@@ -11,9 +11,9 @@
 #include <S3UTmesh.h>
 #include "SoftShadowMap.h"
 #include "SilhouetteBackprojection.h"
-#include "HierarchalEdgeExtraction.h"
 #include "SilhouetteBPMSSMKernel.h"
 #include "StandardVSM.h"
+#include "MipVSM.h"
 #include "PCSS.h"
 #include "HierBP.h"
 #include "RenderFinal.h"
@@ -55,9 +55,9 @@ static bool g_bMoveCamera = true;
 static float g_fFilterSizeCtrl = 0.09;
 static float g_fFilterSize = 0.09;
 static SilhouetteBP g_ABP;
-static HierarchalEdgeExtraction g_HEEBP;
 static SilhouetteBPMSSMKernel g_BPMSSMKernel;
 static StdVSM g_StdVSM;
+static MipVSM g_MipVSM;
 static PCSS g_PCSS;
 static HierBP g_HBP;
 static BPGlobalIllumination   g_BPGI;
@@ -159,6 +159,9 @@ static void LoadNewModel(bool bNeedUI = false)
         D3DXVECTOR3 vLight[NUM_LIGHT]		= LIGHT_POS;
         D3DXVECTOR3 vEye		= EYE_POS;
         D3DXVECTOR3 vLookAt		= LOOK_AT_POS;
+		//--
+		g_Widget.ProvideParameters( vLight[0], g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
+		//--
 
 		//light management
 		for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
@@ -188,7 +191,7 @@ static void InitApp()
     pComboBox->AddItem(L"StandardBP", NULL);
     pComboBox->AddItem(L"BP_MSSM_KERNEL", NULL);
     pComboBox->AddItem(L"STD_VSM", NULL);
-    pComboBox->AddItem(L"HirEdgeExtraction", NULL);
+    pComboBox->AddItem(L"MipVSM", NULL);
     pComboBox->AddItem(L"HirBP", NULL);
     pComboBox->AddItem(L"BPGI", NULL);
     pComboBox->AddItem(L"NoShadows", NULL);
@@ -396,7 +399,7 @@ LRESULT CALLBACK MsgProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bo
 	}
 	else{
 		//light management
-		for( int light_idx = 0; light_idx < NUM_LIGHT; ++ light_idx )
+		for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
 		{
 			g_LCamera[light_idx].HandleMessages( hWnd, uMsg, wParam, lParam );
 		}
@@ -433,6 +436,117 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
 		if( ShadowAlgorithm == STD_PCSS )
 		{
 			g_PCSS.m_bShaderChanged = true;
+		}
+		if( ShadowAlgorithm == MIP_VSM )
+		{
+			g_MipVSM.m_bShaderChanged = true;
+		}
+		break;
+	case VK_LEFT:
+		{
+			//D3DXMATRIX mTmp;
+			//D3DXMatrixInverse(&mTmp, NULL, g_Camera.GetViewMatrix());
+			D3DXVECTOR3 offset(-0.05,0,0);
+			//D3DXVECTOR4 transformed_off;
+			//D3DXVec3Transform( &transformed_off, &offset, &mTmp );
+			//D3DXVECTOR3 off3( transformed_off.x, transformed_off.y, transformed_off.z );
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;
+	case VK_RIGHT:
+		{
+			D3DXVECTOR3 offset(0.05,0,0);
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;	
+	case VK_UP:
+		{
+			D3DXVECTOR3 offset(0,0,-0.05);
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;
+	case VK_DOWN:
+		{
+			D3DXVECTOR3 offset(0,0,0.05);
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;	
+	case 0x52://r
+		{
+			D3DXVECTOR3 offset(0,0.05,0);
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;	
+	case 0x46://f
+		{
+			D3DXVECTOR3 offset(0,-0.05,0);
+			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
+			{
+				g_LCamera[light_idx].MoveLight(&offset);
+
+			}
+		}
+		break;	
+	case 0x41://a
+		{
+			D3DXVECTOR3 offset(-0.05,0,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;
+	case 0x44://d
+		{
+			D3DXVECTOR3 offset(0.05,0,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x57://w
+		{
+			D3DXVECTOR3 offset(0,0,-0.05);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;
+	case 0x53://s
+		{
+			D3DXVECTOR3 offset(0,0,0.05);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x51://q
+		{
+			D3DXVECTOR3 offset(0,0.05,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x45://e
+		{
+			D3DXVECTOR3 offset(0,-0.05,0);
+			g_Camera.MoveLight(&offset);
+
 		}
 		break;
     }
@@ -552,8 +666,8 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
     case    STD_VSM:
 	        g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
             break;
-    case    HIR_EDGE_EXTRACTION:
-	        g_HEEBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+    case    MIP_VSM:
+	        g_MipVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
             break;
     case    HIR_BP:
         	g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
@@ -683,8 +797,8 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
     case    STD_VSM:
 	        g_StdVSM.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
             break;
-    case    HIR_EDGE_EXTRACTION:
-	        g_HEEBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
+    case    MIP_VSM:
+	        g_MipVSM.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
             break;
     case    HIR_BP:
 	        g_HBP.OnD3D10SwapChainResized(pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext );
@@ -755,8 +869,8 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
         case    STD_VSM:
 	            g_StdVSM.OnD3D10DestroyDevice();
                 break;
-        case    HIR_EDGE_EXTRACTION:
-	            g_HEEBP.OnD3D10DestroyDevice();
+        case    MIP_VSM:
+	            g_MipVSM.OnD3D10DestroyDevice();
                 break;
         case    HIR_BP:
                 g_HBP.OnD3D10DestroyDevice();
@@ -784,9 +898,9 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	            g_StdVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
                 g_StdVSM.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
                 break;
-        case    HIR_EDGE_EXTRACTION:
-	            g_HEEBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
-                g_HEEBP.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
+        case    MIP_VSM:
+	            g_MipVSM.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
+                g_MipVSM.OnD3D10SwapChainResized(pDev10,NULL,pBackBufferSurfaceDesc,pUserContext );
                 break;
         case    HIR_BP:
                 g_HBP.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
@@ -913,6 +1027,11 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 		g_fFilterSize = g_fFilterSizeCtrl;
 	}
 	g_fFilterSize = g_fFilterSizeCtrl;
+	
+	//light pos is not modified here. this light pos stored in 3DWidget is only synced with light camera after rendering of the light
+	//if you try to modify light pos here, light would be freezed, of course, this is a bug introduced by bad design
+	D3DXVECTOR3 vTmp;
+	g_Widget.ProvideParameters( vTmp, g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
 
 	// render GBuffer
 	pDev10->OMSetDepthStencilState(g_pDSState,0);
@@ -920,12 +1039,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 									g_MeshScene, g_CameraRef, 
 									pDev10, fTime, fElapsedTime, pUserContext );
 // rendering a subdivided light
-	//--
-	D3DXVECTOR3 vTmpLight;
-	g_Widget.ProvideParameters( vTmpLight, g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
-	D3DXVECTOR3 vTmpLookAt = *g_LCamera[0].GetLookAtPt();
-	g_LCamera[0].SetViewParams( &vTmpLight,&vTmpLookAt );
-	//--
 	float scaled_half_light_size = (g_fFilterSize*LIGHT_SCALE_FACTOR);
 	float fStartPt = -scaled_half_light_size;
 	float fInterval = 2 * scaled_half_light_size / g_nNumLightSample;
@@ -1046,6 +1159,14 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 				g_StdVSM.set_input_buffer( &g_GBuffer );
 				g_StdVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 			}
+			else if( ShadowAlgorithm == MIP_VSM )
+			{
+				V(g_MipVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+				g_MipVSM.set_parameters( para,p_RTV,p_SRV,&light_color[0] );
+				g_MipVSM.set_input_buffer( &g_GBuffer );
+				g_MipVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
+			}
 			else if( ShadowAlgorithm == STD_PCSS )
 			{
 				V(g_PCSS.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
@@ -1111,7 +1232,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 		g_NoShadow.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
 	}
-	
+
 	if( ( light_idx + g_nNumLightSample * g_nNumLightSample ) % 2 == 0 )
 	{
 		p_RTV = g_pPingpongBuffer[0]->m_pRTView;
@@ -1129,7 +1250,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	D3DXMatrixScaling( &mMatrixScale,(FLOAT)5,(FLOAT)5,(FLOAT)5 );
 	D3DXMatrixMultiply( &mMatrixScaleWVP, &mMatrixScale, &mWorldViewProj );
 	ID3D10RenderTargetView* pOrigRTV = DXUTGetD3D10RenderTargetView();
-	pDev10->OMSetRenderTargets(1,&pOrigRTV,pDSV);
+	pDev10->OMSetRenderTargets(1,&pOrigRTV,NULL);
 
 	g_MeshScene.set_parameters( render_ogre,render_scene, render_fan );
 	g_Final.set_parameters( para, pOrigRTV, p_SRV,NULL );
@@ -1149,7 +1270,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
     {
 		RenderText();
         g_SampleUI.OnRender(fElapsedTime);
-        g_HUD.OnRender(fElapsedTime);
+        //g_HUD.OnRender(fElapsedTime);
     }
 
 	if( g_SampleUI.GetCheckBox( IDC_FRAME_DUMP )->GetChecked() )
@@ -1217,8 +1338,8 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 	g_NoShadow.OnD3D10DestroyDevice();
 	g_BPGI.OnD3D10DestroyDevice();
 	g_HBP.OnD3D10DestroyDevice();
-	g_HEEBP.OnD3D10DestroyDevice();
 	g_StdVSM.OnD3D10DestroyDevice();
+	g_MipVSM.OnD3D10DestroyDevice();
 	g_PCSS.OnD3D10DestroyDevice();
 	g_BPMSSMKernel.OnD3D10DestroyDevice();
 	g_Final.OnD3D10DestroyDevice();
