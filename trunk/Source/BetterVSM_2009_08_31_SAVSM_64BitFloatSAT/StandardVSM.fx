@@ -58,6 +58,8 @@ cbuffer cb0 : register(b0)
     float fScreenWidth;
     float fScreenHeight;
     float fLumiFactor;
+    float f3rdDepthDelta;
+    float f1stDepthDelta;
 
 };
 
@@ -180,7 +182,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 1;
 	//those stuck in complex depth relationship are subdivided, others dont
-	if( pixel_linear_z + 0.037 < max_depth && pixel_linear_z > min_depth + 0.05 )
+	if( pixel_linear_z + f3rdDepthDelta < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
 	{
 		float factor = ( pixel_linear_z - min_depth )/0.037;
 		light_per_row = 7;

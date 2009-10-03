@@ -43,6 +43,8 @@
 #define IDC_FAN 103
 
 #define IDC_FRAME_DUMP 104
+#define IDC_BIAS_3RD_DEPTH 105
+#define IDC_BIAS_1ST_DEPTH 106
 
 struct Parameters//soft shadow mapping algorithm parameter set
 {
