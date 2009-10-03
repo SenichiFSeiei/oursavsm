@@ -39,6 +39,7 @@ public:
     void SetLightZn( float light_zn ){ m_fCtrledLightZn = light_zn; }
     void SetLightZf( float light_zf ){ m_fCtrledLightZf = light_zf; }
     void SetLightFov( float light_fov ){ m_fCtrledLightFov = light_fov; }
+	void SetLightPos( D3DXVECTOR3 vLight ){ m_vLight = vLight; }
 private:
 	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
