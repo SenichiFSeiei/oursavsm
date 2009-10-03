@@ -33,7 +33,7 @@ SSMap::SSMap()
 	m_nDepthRes = DEPTH_RES;
     nMips = (int)(log((double)m_nDepthRes) / M_LN2);
 	m_pShadowMapEffect = NULL;
-	m_bBuildHSM = false;
+	m_bBuildHSM = true;
 	m_bBuildMSSM = false;
 	m_bBuildSAT = true;
 	m_bBuildVSM = false;
@@ -372,6 +372,8 @@ void SSMap::BuildHSM( ID3D10Device *par_pDev10 )
     vp.MaxDepth = 1;
     vp.TopLeftX = 0;
     vp.TopLeftY = 0;
+	D3D10_RECT Region = {0, 0, m_nDepthRes, m_nDepthRes};
+	par_pDev10->RSSetScissorRects(1, &Region);
 
 	// create mipmap pyramid
     V(m_pShadowMapEffect->GetVariableByName("DepthTex0")->AsShaderResource()->SetResource(m_pDepthSRView[0]));
@@ -399,6 +401,7 @@ void SSMap::BuildHSM( ID3D10Device *par_pDev10 )
 	ID3D10RenderTargetView *pNullRTView = NULL;
     par_pDev10->OMSetRenderTargets(1, &pNullRTView, NULL);
 
+/*
     V(m_pShadowMapEffect->GetVariableByName("DepthMip2")->AsShaderResource()->SetResource(m_pDepthMip2SRView));
     V(pDReworkTechnique2->GetPassByName("ConvertToBig")->Apply(0));
     vp.Height = m_nDepthRes;
@@ -413,7 +416,7 @@ void SSMap::BuildHSM( ID3D10Device *par_pDev10 )
 	float ClearColor[4] = { 1, 1, 1, 1 };
 	par_pDev10->ClearRenderTargetView(m_pBigDepth2RTView,ClearColor);
     par_pDev10->Draw(3, 0);
-
+*/
 }
 
 void SSMap::BuildVSM( ID3D10Device *par_pDev10 )
@@ -428,6 +431,9 @@ void SSMap::BuildVSM( ID3D10Device *par_pDev10 )
     vp.MaxDepth = 1;
     vp.TopLeftX = 0;
     vp.TopLeftY = 0;
+
+	D3D10_RECT Region = {0, 0, m_nDepthRes, m_nDepthRes};
+	par_pDev10->RSSetScissorRects(1, &Region);
 
 	// create mipmap pyramid
     V(m_pShadowMapEffect->GetVariableByName("DepthTex0")->AsShaderResource()->SetResource(m_pDepthSRView[0]));
@@ -591,6 +597,8 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
     pDev10->RSSetViewports(1, &vp);
 
     // render depth
+	D3D10_RECT Region = {0, 0, m_nDepthRes, m_nDepthRes};
+	pDev10->RSSetScissorRects(1, &Region);
     pDev10->RSSetState(m_pRasterState);
     pDev10->OMSetDepthStencilState(m_pDSState, 0);
     ID3D10RenderTargetView *pNullRTView = NULL;
