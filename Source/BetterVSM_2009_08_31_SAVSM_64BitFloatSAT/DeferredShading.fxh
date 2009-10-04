@@ -120,7 +120,7 @@ technique10 FinalPass
 // produce better results anyways.
 // However, most applications won't need gigantic filters, in which case this value can
 // be raised to obtain even better numeric precision.
-static const uint g_SATUINTPrecisionBits = 12;
+static const uint g_SATUINTPrecisionBits = 18;
 //static const float g_SATUINTMaxFilterWidth = 1 << ((32 - g_SATUINTPrecisionBits) / 2);
 static const float g_NormalizedFloatToSATUINT = 1 << g_SATUINTPrecisionBits;
 // Factor to use to distribute FP precision
