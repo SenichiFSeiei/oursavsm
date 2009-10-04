@@ -60,6 +60,7 @@ cbuffer cb0 : register(b0)
     float fLumiFactor;
     float f3rdDepthDelta;
     float f1stDepthDelta;
+    float fMainBias;
 
 };
 
@@ -169,7 +170,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		   BTop    = 1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ),	BBottom = 1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 ); 
 	
 	//calculate HSM mip level, use HSM to help identify complex depth relationship
-	int mipL = round(log(LightWidthPersNorm * DEPTH_RES));
+	int mipL = round(log(LightWidthPersNorm * DEPTH_RES)) - 1;
 	float2 depth0 = DepthMip2.SampleLevel(LinearSampler,float2(BLeft,BTop),mipL);
 	float2 depth1 = DepthMip2.SampleLevel(LinearSampler,float2(BLeft,BBottom),mipL);
 	float2 depth2 = DepthMip2.SampleLevel(LinearSampler,float2(BRight,BBottom),mipL);
@@ -182,10 +183,10 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 1;
 	//those stuck in complex depth relationship are subdivided, others dont
-	if( pixel_linear_z + f3rdDepthDelta < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
+	if( pixel_linear_z + /*f3rdDepthDelta*/0.03 < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
 	{
 		float factor = ( pixel_linear_z - min_depth )/0.037;
-		light_per_row = 7;
+		light_per_row = 6;
 		//uncomment the line below to see regions subdivided
 		//return float4(0,0,1,1);
 	}
@@ -206,13 +207,13 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
 	//very small filter region usually means completely lit
-	if( BRight - BLeft < 0.01 )
+	if( BRight - BLeft < 0.014 )
 		return float4( 1,1,1,1 );
 			
-	if( light_per_row == 7 )	//slightly increase the subdivision level
-		light_per_row = 9;
+	if( light_per_row == 6 )	//slightly increase the subdivision level
+		light_per_row = 8;
 		
-	est_occ_depth_and_chebshev_ineq( 0.0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
