@@ -206,12 +206,12 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-	//very small filter region usually means completely lit
-	if( BRight - BLeft < 0.014 )
-		return float4( 1,1,1,1 );
-			
 	if( light_per_row == 6 )	//slightly increase the subdivision level
 		light_per_row = 8;
+		
+	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
+	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES/2 );
+	if( light_per_row == 0 )	return float4(1,1,0,1);
 		
 	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	//dont try to remove these 2 branch, otherwise black acne appears
