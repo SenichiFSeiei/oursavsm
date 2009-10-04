@@ -86,7 +86,7 @@ DXGI_SURFACE_DESC             g_pFloatBufferSurfaceDesc;
 WCHAR  g_EnvMapFilePath[MAX_PATH_STR]; 
 WCHAR* g_DefaultEnvMapName[]={ DEFAULT_HDR_ENVMAP }; 
 
-static 	float g_fDefaultDepthBias			= 0.00125;
+static 	float g_fDefaultDepthBias			= 0.0;
 static 	float g_fDepthBiasHammer			= 0.02325;
 static 	float g_fDepthBiasLeftForearm		= 0.0055;
 static 	float g_fDepthBiasRightForearm		= 0.00745;
@@ -545,7 +545,7 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
         g_Widget.SetLightFov((float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/10);
 		break;
 	case IDC_fDefaultDepthBias:
-		g_fDefaultDepthBias = (float)g_SampleUI.GetSlider(IDC_fDefaultDepthBias)->GetValue()/4000.0;
+		g_fDefaultDepthBias = (float)g_SampleUI.GetSlider(IDC_fDefaultDepthBias)->GetValue()/100;
 		break;
 	case IDC_fDepthBiasHammer:
 		g_fDepthBiasHammer = (float)g_SampleUI.GetSlider(IDC_fDepthBiasHammer)->GetValue()/4000.0;
@@ -1128,7 +1128,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 			{
 				V(g_StdVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
 
-				g_StdVSM.set_bias( g_f3rdDepthDelta, g_f1stDepthDelta );
+				g_StdVSM.set_bias( g_fDefaultDepthBias,g_f3rdDepthDelta, g_f1stDepthDelta );
 				g_StdVSM.set_parameters( para,p_RTV,p_SRV,&light_color[0] );
 				g_StdVSM.set_input_buffer( &g_GBuffer );
 				g_StdVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
