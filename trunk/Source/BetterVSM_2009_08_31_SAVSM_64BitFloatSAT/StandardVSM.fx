@@ -158,7 +158,8 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	[branch]if( ShadowTexC.x > hiSide || ShadowTexC.x < loSide  || ShadowTexC.y > hiSide || ShadowTexC.y < loSide )
 		return float4( 1,1,1,1 );
 			
-	float pixel_linear_z = (vPosLight.w - fLightZn) / (fLightZf-fLightZn);	
+	float pixel_linear_z = (vPosLight.w - fLightZn) / (fLightZf-fLightZn);
+	if( pixel_linear_z > 1.0 ) return float4(1,1,1,1);	
 	
 	//calculate the initial filter kernel 
 	float  scale = ( vPosLight.w - fLightZn )/vPosLight.w;
@@ -211,7 +212,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES/2 );
-	if( light_per_row == 0 )	return float4(1,1,0,1);
+	if( light_per_row <= 0 )	return float4(1,1,0,1);
 		
 	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	//dont try to remove these 2 branch, otherwise black acne appears
