@@ -16,6 +16,7 @@
 #include <dxut.h>
 #include <dxutgui.h>
 #include <dxutsettingsdlg.h>
+#include "CommonDef.h"
 
 class S3UTMesh;
 class S3UTCamera;
@@ -51,7 +52,7 @@ public:
 	ID3D10RenderTargetView *m_pSatRTViews[NUM_SAT_TMP_TEX];
 	ID3D10ShaderResourceView *m_pSatSRViews[NUM_SAT_TMP_TEX];
 	ID3D10ShaderResourceView *m_pSatSRView;
-	static const int m_cSatRes = 1024;
+	static const int m_cSatRes = DEPTH_RES;
 	static const int m_cSampleBatch = 8;
 	//---------------------------------------------------------------
 
