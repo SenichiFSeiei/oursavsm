@@ -221,7 +221,7 @@ static void InitApp()
 	g_SampleUI.AddSlider(IDC_BIAS_3RD_DEPTH, 160, iY, 124, 22, 0, 100, 40 );
 
 	g_SampleUI.AddStatic(IDC_COMMON_LABEL, L"1st depth delta", 35, iY += 25, 125, 22 );
-	g_SampleUI.AddSlider(IDC_BIAS_3RD_DEPTH, 160, iY, 124, 22, 0, 100, 40 );
+	g_SampleUI.AddSlider(IDC_BIAS_1ST_DEPTH, 160, iY, 124, 22, 0, 100, 40 );
 
     g_SampleUI.AddCheckBox( IDC_BTEXTURED, L"Enable Texturing", 15, iY += 25, 124, 22, false);
 	g_SampleUI.AddCheckBox( IDC_SHOW_3DWIDGET, L"Show 3D Widget", 150, iY, 124, 22, true);
@@ -593,10 +593,10 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
 		g_nNumLightSample = 2*(int)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue();
 		break;
 	case IDC_BIAS_3RD_DEPTH:
-		g_f3rdDepthDelta = (float)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue()/500;
+		g_f3rdDepthDelta = (float)g_SampleUI.GetSlider(IDC_BIAS_3RD_DEPTH)->GetValue()/100;
 		break;
 	case IDC_BIAS_1ST_DEPTH:
-		g_f1stDepthDelta = (float)g_SampleUI.GetSlider(IDC_NUM_LIGHT_SAMPLE)->GetValue()/500;
+		g_f1stDepthDelta = (float)g_SampleUI.GetSlider(IDC_BIAS_3RD_DEPTH)->GetValue()/500;
 		break;
     }    
 }
