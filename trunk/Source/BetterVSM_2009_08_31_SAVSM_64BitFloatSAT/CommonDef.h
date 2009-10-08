@@ -86,6 +86,9 @@ struct Biases
 #define BILINEAR_INT_SMP
 #define USE_LINEAR_Z
 
+//#define EVSM
+#define EXPC 1
+
 //#define DUAL_EVSM
 
 #include "FirstScript.h"

@@ -157,6 +157,89 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 	return Ex;
 }
 
+<<<<<<< .mine
+//closely related to this context, could not be used alone
+uint4 SampleSatVSMBilinear( float2 texC )
+{
+	float2 uv_off = frac( texC * DEPTH_RES );
+	int3   texel_idx = { floor( texC * DEPTH_RES ),0 };
+	uint4  depth0 = SatVSM.Load( texel_idx );
+	uint4  depth1 = SatVSM.Load( texel_idx + int3( 1,0,0 ) );
+	uint4  depth2 = SatVSM.Load( texel_idx + int3( 0,1,0 ) );
+	uint4  depth3 = SatVSM.Load( texel_idx + int3( 1,1,0 ) );
+	uint4  depth_avg = depth0 * ( 1 - uv_off.x ) * ( 1 - uv_off.y )  + round( depth1 * uv_off.x * ( 1 - uv_off.y ) )
+						+ depth2 * ( 1 - uv_off.x ) * uv_off.y  + round( depth3 * uv_off.x * uv_off.y );
+	return depth_avg;	
+} 
+
+float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part )
+{
+#ifdef EVSM
+	float  expCZ = exp(pixel_linear_z*EXPC);
+#endif
+	float4 moments = {0.0,0.0,0.0,0.0};
+	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+	float  rescale = 1/g_NormalizedFloatToSATUINT;
+	
+	float2 curr_lt = float2( BLeft, BTop );
+	
+	float sum_x = 0, sum_sqr_x = 0;
+	unocc_part = 0.0;
+	for( int i = 0; i<light_per_row; ++i )
+	{
+		uint4  d_lt = SampleSatVSMBilinear( curr_lt );
+		uint4  d_lb = SampleSatVSMBilinear( curr_lt + float2(0,sub_light_size_01) );
+		for( uint j = 0; j<light_per_row; ++j )
+		{
+			float2 crd_lt  = curr_lt*DEPTH_RES; 
+			float2 crd_rb  = (curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES;
+
+			uint4  d_rt = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,0) );
+			uint4  d_rb = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,sub_light_size_01) );
+			
+			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y) );
+#ifdef EVSM
+			if( moments.x > expCZ + bias )
+#else
+			if( moments.x > pixel_linear_z )
+#endif
+				++unocc_part;
+			else
+			{
+				sum_x += moments.x;
+				sum_sqr_x += moments.y;
+			}
+			
+			curr_lt.x += sub_light_size_01;
+			d_lt = d_rt;
+			d_lb = d_rb;
+		}
+		curr_lt.x = BLeft;
+		curr_lt.y += sub_light_size_01;
+	}
+	
+	float Ex = sum_x / ((light_per_row * light_per_row)-unocc_part);
+	float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part);
+	float VARx = E_sqr_x - Ex * Ex;
+#ifdef EVSM
+	float est_depth = expCZ - Ex;
+#else
+	float est_depth = pixel_linear_z - Ex;
+#endif
+	fPartLit = VARx / (VARx + est_depth * est_depth );
+#ifdef EVSM
+	occ_depth = max( 1,( Ex - fPartLit * expCZ )/( 1 - fPartLit ));
+	occ_depth = log(occ_depth);
+	occ_depth /= EXPC;
+#else
+	occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+#endif
+	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+	return Ex;
+}
+
+
+=======
 //closely related to this context, could not be used alone
 void SampleSatVSMBilinear( float2 texC, out uint4  depth0, out uint4  depth1, out uint4  depth2, out uint4  depth3 )
 {
@@ -389,6 +472,7 @@ float EvaluateVSMShadow_SubDiv_Bilinear(float filterWidth, float2 uv, float curD
  return fPartLit;  
 }
 
+>>>>>>> .r76
 //external dependency: mLightViewProj, mLightProj, fLightZn, fLightZf, fFilterSize
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
 {
@@ -445,8 +529,13 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//the estimation below returns the fPartLit, Zmin and unocc_part
 	est_occ_depth_and_chebshev_ineq( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	
+<<<<<<< .mine
+	[branch]if( fPartLit < 0.0 ) return float4(0,0,0,1);
+
+=======
 	//[branch]if( fPartLit < 0.0 ) return float4(0,0,0,1);
 
+>>>>>>> .r76
 	//estimated the shrinked filter region
 	float	T_LightWidth  = ( vPosLight.w - Zmin ) * ( fFilterSize ) / vPosLight.w;
 	float	S_LightWidth  = fLightZn * T_LightWidth  / Zmin;
@@ -461,8 +550,12 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
+<<<<<<< .mine
+	est_occ_depth_and_chebshev_ineq_bilinear( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
+=======
 	//est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part );
 	fPartLit = EvaluateVSMShadow_SubDiv_Bilinear((BRight-BLeft)/2, ShadowTexC, pixel_linear_z);
+>>>>>>> .r76
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
 		return float4(0,0,0,1);		

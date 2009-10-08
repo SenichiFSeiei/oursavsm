@@ -1,5 +1,3 @@
-//#define DEBUG_SAT
-
 #define _USE_MATH_DEFINES
 
 #include <dxut.h>

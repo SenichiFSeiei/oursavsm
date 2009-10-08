@@ -604,18 +604,6 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="InputBuffer"
-				>
-				<File
-					RelativePath=".\InputBuffer.fx"
-					>
-				</File>
-				<File
-					RelativePath=".\InputBuffer.h"
-					>
-				</File>
-			</Filter>
-			<Filter
 				Name="FullScrQuadRender"
 				>
 				<File
@@ -648,6 +636,18 @@
 				</File>
 				<File
 					RelativePath=".\Widget3D.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="InputBuffer"
+				>
+				<File
+					RelativePath=".\InputBuffer.fx"
+					>
+				</File>
+				<File
+					RelativePath=".\InputBuffer.h"
 					>
 				</File>
 			</Filter>
