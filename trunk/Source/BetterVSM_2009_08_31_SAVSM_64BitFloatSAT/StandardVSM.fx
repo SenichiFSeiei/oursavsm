@@ -158,6 +158,8 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 	occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 #endif
 	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+	fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);	;
+
 	return Ex;
 }
 
@@ -246,6 +248,8 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 #endif
 	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+	fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);	;
+
 	return Ex;
 }
 
@@ -265,7 +269,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		return float4( 1,1,1,1 );
 			
 	float pixel_linear_z = (vPosLight.w - fLightZn) / (fLightZf-fLightZn);
-	if( pixel_linear_z > 1.0 ) return float4(1,1,1,1);	
+	[branch]if( pixel_linear_z > 1.0 ) return float4(1,1,1,1);	
 	
 	//calculate the initial filter kernel 
 	float  scale = ( vPosLight.w - fLightZn )/vPosLight.w;
@@ -284,7 +288,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	float2 depth3 = DepthMip2.SampleLevel(LinearSampler,float2(BRight,BTop),mipL);
 	float max_depth = max( max(depth0.y,depth1.y),max(depth2.y,depth3.y) );	
 	float min_depth = min( min(depth0.x,depth1.x),min(depth2.x,depth3.x) );
-	if( pixel_linear_z < min_depth )
+	[branch]if( pixel_linear_z < min_depth )
 		return float4(1,1,1,1);
 		
 	//this is the variable used to control the level of filter area subdivision	
@@ -292,7 +296,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//those stuck in complex depth relationship are subdivided, others dont
 	if( pixel_linear_z + /*f3rdDepthDelta*/0.03 < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
 	{
-		light_per_row = 10;
+		light_per_row = 6;
 		light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		//uncomment the line below to see regions subdivided
 		//return float4(0,0,1,1);
@@ -315,22 +319,21 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( light_per_row == 10 )	//slightly increase the subdivision level
-		light_per_row = 10;
+	if( light_per_row == 6 )	//slightly increase the subdivision level
+		light_per_row = 8;
 		
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
-	est_occ_depth_and_chebshev_ineq_bilinear( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
 		return float4(0,0,0,1);		
 	[branch]if( unocc_part == (light_per_row * light_per_row) )
 		return float4(1,1,1,1);
-	[branch]if( Zmin + 0.1 >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
+	[branch]if( Zmin >= pixel_linear_z * (fLightZf-fLightZn) + fLightZn)
 		return float4(0,1,0,1);
-	fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);	;
 	
 	return float4( fPartLit,fPartLit,fPartLit,1);
 }

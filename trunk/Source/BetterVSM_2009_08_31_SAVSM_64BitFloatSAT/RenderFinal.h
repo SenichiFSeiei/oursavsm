@@ -26,16 +26,19 @@ public:
 	void OnD3D10DestroyDevice( void* pUserContext = NULL);
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
+	HRESULT CreateShader(ID3D10Device *pDev10);
 	
 	~RenderFinal();
 
 	InputBuffer *m_pGBuffer;
+	bool m_bShaderChanged;
 };
 
 RenderFinal::RenderFinal()
 {
 	m_pEffect = NULL;
 	m_pScrQuadRender = new FullRTQuadRender("FinalPresentPass");
+	m_bShaderChanged = false;
 }
 
 RenderFinal::~RenderFinal()
@@ -43,7 +46,7 @@ RenderFinal::~RenderFinal()
 	//OnD3D10DestroyDevice();
 }
 
-HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
+HRESULT RenderFinal::CreateShader(ID3D10Device *pDev10)
 {
 	HRESULT hr;
 	
@@ -54,8 +57,15 @@ HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFAC
     {
         MessageBoxA(NULL, (char *)pErrors->GetBufferPointer(), "Compilation error", MB_OK);
         exit(0);
-    }
- 
+    }	
+	return S_OK;
+
+}
+
+HRESULT RenderFinal::OnD3D10CreateDevice(ID3D10Device *pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void *pUserContext)
+{
+
+	CreateShader( pDev10 );
 	m_pScrQuadRender->OnD3D10CreateDevice(m_pEffect,pDev10,pBackBufferSurfaceDesc,pUserContext);
 
 	return S_OK;
@@ -91,6 +101,12 @@ void RenderFinal::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshSce
 									  SSMap &ssmap,S3UTCamera &g_CameraRef,S3UTCamera &g_LCameraRef, 
 									  ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext)
 {
+	if( m_bShaderChanged )
+	{
+		CreateShader(pDev10);
+		m_bShaderChanged = false;
+	}
+
 	HRESULT hr;
     D3DXMATRIX mTmp, mWorldView, mWorldViewProj, mWorldViewInv;
     D3DXMatrixInverse(&mTmp, NULL, g_CameraRef.GetWorldMatrix());
@@ -101,6 +117,8 @@ void RenderFinal::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshSce
 	pDev10->OMSetRenderTargets(1,&m_pRTV,DXUTGetD3D10DepthStencilView());
 	pDev10->ClearDepthStencilView(DXUTGetD3D10DepthStencilView(), D3D10_CLEAR_DEPTH, 1.0, 0);
 	V(m_pEffect->GetVariableByName("TexFinalResult")->AsShaderResource()->SetResource( m_pPreResult ));
+	V(m_pEffect->GetVariableByName("TexPosInWorld")->AsShaderResource()->SetResource( m_pInputBuffer->m_pInputAttributes->m_pSRView0));
+
 
 	m_pScrQuadRender->SetUseMyRT( false );
 	m_pScrQuadRender->OnD3D10FrameRender( m_pEffect,m_pEffect->GetTechniqueByName("FinalPresentPass"),

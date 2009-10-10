@@ -396,6 +396,7 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
 		break;
 	case VK_F10:
 		ssmap.m_bShaderChanged = true;
+		g_Final.m_bShaderChanged = true;
 		if( ShadowAlgorithm == STD_VSM )
 		{
 			g_StdVSM.m_bShaderChanged = true;
@@ -1230,7 +1231,8 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Final.set_parameters( para, pOrigRTV, p_SRV,NULL );
 	S3UTCamera& g_LCameraRef = g_LCamera[0];
 	//temporary code for test driving FullRTQuadRender
-	g_Final.m_pGBuffer = &g_GBuffer;
+	//g_Final.m_pGBuffer = &g_GBuffer;
+	g_Final.set_input_buffer( &g_GBuffer );
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
