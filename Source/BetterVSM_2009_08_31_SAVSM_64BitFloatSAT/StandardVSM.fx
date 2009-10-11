@@ -270,7 +270,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 			
 	float pixel_linear_z = (vPosLight.w - fLightZn) / (fLightZf-fLightZn);
 	[branch]if( pixel_linear_z > 1.0 ) return float4(1,1,1,1);	
-	
+
 	//calculate the initial filter kernel 
 	float  scale = ( vPosLight.w - fLightZn )/vPosLight.w;
 	float  LightWidthPers  = fFilterSize  * scale;
@@ -279,22 +279,47 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//top is smaller than bottom		   
 	float  BLeft   = max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5,			BRight  = min( vPosLight.x/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5,
 		   BTop    = 1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ),	BBottom = 1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 ); 
-	
+/*	
+	//calculate HSM mip level, use HSM to help identify complex depth relationship
+	int relative_level = 1;
+	int mipL = ceil(log2(LightWidthPersNorm * DEPTH_RES)) - relative_level;
+	int total_level = log2(DEPTH_RES);
+	int mip_res = 1 << ( total_level - mipL);
+	int start_x = floor( BLeft * mip_res - float2( 0.5,0.5 ) );
+	int end_x = floor( BRight * mip_res - float2( 0.5,0.5 ) );
+	int start_y = floor( BTop * mip_res - float2( 0.5,0.5 ) );
+	int end_y = floor( BBottom * mip_res - float2( 0.5,0.5 ) );
+
+	float max_depth = -100;
+	float min_depth =  100;	
+	for( int i = start_y; i <= end_y; ++i )
+	{
+		for( int j = start_x; j <= end_x; ++j )
+		{
+			float2 depth = DepthMip2.Load(int3(j,i,mipL));
+			max_depth = max( depth.y, max_depth );
+			min_depth = min( depth.x, min_depth );
+
+		}
+	}
+*/
+
 	//calculate HSM mip level, use HSM to help identify complex depth relationship
 	int mipL = round(log(LightWidthPersNorm * DEPTH_RES)) - 1;
-	float2 depth0 = DepthMip2.SampleLevel(LinearSampler,float2(BLeft,BTop),mipL);
-	float2 depth1 = DepthMip2.SampleLevel(LinearSampler,float2(BLeft,BBottom),mipL);
-	float2 depth2 = DepthMip2.SampleLevel(LinearSampler,float2(BRight,BBottom),mipL);
-	float2 depth3 = DepthMip2.SampleLevel(LinearSampler,float2(BRight,BTop),mipL);
+	float2 depth0 = DepthMip2.SampleLevel(PointSampler,float2(BLeft,BTop),mipL);
+	float2 depth1 = DepthMip2.SampleLevel(PointSampler,float2(BLeft,BBottom),mipL);
+	float2 depth2 = DepthMip2.SampleLevel(PointSampler,float2(BRight,BBottom),mipL);
+	float2 depth3 = DepthMip2.SampleLevel(PointSampler,float2(BRight,BTop),mipL);
 	float max_depth = max( max(depth0.y,depth1.y),max(depth2.y,depth3.y) );	
 	float min_depth = min( min(depth0.x,depth1.x),min(depth2.x,depth3.x) );
+
 	[branch]if( pixel_linear_z < min_depth )
 		return float4(1,1,1,1);
 		
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 1;
 	//those stuck in complex depth relationship are subdivided, others dont
-	if( pixel_linear_z + /*f3rdDepthDelta*/0.03 < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
+	if( pixel_linear_z /*f3rdDepthDelta*/+0.03 < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
 	{
 		light_per_row = 6;
 		light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
@@ -325,7 +350,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
-	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq_bilinear( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
