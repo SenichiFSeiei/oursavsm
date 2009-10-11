@@ -539,9 +539,11 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
         RasterState.FillMode = D3D10_FILL_SOLID;
         RasterState.CullMode = SHADOWMAP_CULL;
         RasterState.FrontCounterClockwise = true;
-        RasterState.DepthBias = false;
-        RasterState.DepthBiasClamp = 0;
-        RasterState.SlopeScaledDepthBias = 0;
+        RasterState.DepthBias = true;
+        //RasterState.DepthBias = false;
+        RasterState.DepthBiasClamp = 1000.0;
+        //RasterState.DepthBiasClamp = 0;
+        RasterState.SlopeScaledDepthBias = 5;
         RasterState.DepthClipEnable = true;
         RasterState.ScissorEnable = true;
         RasterState.MultisampleEnable = false;
