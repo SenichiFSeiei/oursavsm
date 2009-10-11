@@ -181,6 +181,7 @@ uint4 SampleSatVSMBilinear( float2 texC )
 
 float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 {
+	int num_real_occ = 0;
 #ifdef EVSM
 	float  expCZ = exp(pixel_linear_z*EXPC);
 #endif
@@ -207,7 +208,11 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 			
 			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( max((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y),1) );
 			
+#ifdef EVSM
+			if( moments.y > 10 )
+#else			
 			if( moments.y > 1 )
+#endif
 				unsure_part += 1.0;
 			
 #ifdef EVSM
@@ -216,12 +221,16 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 			if( moments.x > pixel_linear_z  )
 #endif
 				unocc_part += 1.0;
+#ifdef EVSM
+			else if( moments.y <= 10 )
+#else
 			else if( moments.y <= 1 )
+#endif
 			{
 				sum_x += moments.x;
 				sum_sqr_x += moments.y;
 			}
-			
+				
 			curr_lt.x += sub_light_size_01;
 			d_lt = d_rt;
 			d_lb = d_rb;
@@ -248,10 +257,11 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 #endif
 	occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
-	fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);	;
+	fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
 
 	return Ex;
 }
+
 
 //external dependency: mLightViewProj, mLightProj, fLightZn, fLightZf, fFilterSize
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
@@ -279,16 +289,16 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//top is smaller than bottom		   
 	float  BLeft   = max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5,			BRight  = min( vPosLight.x/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5,
 		   BTop    = 1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ),	BBottom = 1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 ); 
-/*	
+	
 	//calculate HSM mip level, use HSM to help identify complex depth relationship
-	int relative_level = 1;
-	int mipL = ceil(log2(LightWidthPersNorm * DEPTH_RES)) - relative_level;
-	int total_level = log2(DEPTH_RES);
-	int mip_res = 1 << ( total_level - mipL);
+	int sub_lev = 4;
+	int sub_len = (LightWidthPersNorm * DEPTH_RES + sub_lev - 1) / sub_lev;
+	int mipL = ceil(log2(sub_len));
+	int mip_res = DEPTH_RES / (1<<mipL);
 	int start_x = floor( BLeft * mip_res - float2( 0.5,0.5 ) );
-	int end_x = floor( BRight * mip_res - float2( 0.5,0.5 ) );
+	int end_x = ceil( BRight * mip_res - float2( 0.5,0.5 ) );
 	int start_y = floor( BTop * mip_res - float2( 0.5,0.5 ) );
-	int end_y = floor( BBottom * mip_res - float2( 0.5,0.5 ) );
+	int end_y = ceil( BBottom * mip_res - float2( 0.5,0.5 ) );
 
 	float max_depth = -100;
 	float min_depth =  100;	
@@ -302,29 +312,21 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 
 		}
 	}
-*/
 
-	//calculate HSM mip level, use HSM to help identify complex depth relationship
-	int mipL = round(log(LightWidthPersNorm * DEPTH_RES)) - 1;
-	float2 depth0 = DepthMip2.SampleLevel(PointSampler,float2(BLeft,BTop),mipL);
-	float2 depth1 = DepthMip2.SampleLevel(PointSampler,float2(BLeft,BBottom),mipL);
-	float2 depth2 = DepthMip2.SampleLevel(PointSampler,float2(BRight,BBottom),mipL);
-	float2 depth3 = DepthMip2.SampleLevel(PointSampler,float2(BRight,BTop),mipL);
-	float max_depth = max( max(depth0.y,depth1.y),max(depth2.y,depth3.y) );	
-	float min_depth = min( min(depth0.x,depth1.x),min(depth2.x,depth3.x) );
-
-	[branch]if( pixel_linear_z < min_depth )
-		return float4(1,1,1,1);
+	[branch]if( pixel_linear_z - 0.06 < min_depth )
+		return float4(0,0,1,1);
+	[branch]if( pixel_linear_z - 0.03 * (max_depth-min_depth) > max_depth )
+		return float4(1,0,0,1);
 		
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 1;
 	//those stuck in complex depth relationship are subdivided, others dont
-	if( pixel_linear_z /*f3rdDepthDelta*/+0.03 < max_depth && pixel_linear_z > min_depth + f1stDepthDelta )
+	if( pixel_linear_z + 0.059 < max_depth && pixel_linear_z > min_depth + 0.06 )
 	{
-		light_per_row = 6;
+		light_per_row = 8;
 		light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		//uncomment the line below to see regions subdivided
-		//return float4(0,0,1,1);
+		return float4(1,0,1,1);
 	}
 	
 	//used to scale float to integer and vice versa
@@ -339,12 +341,12 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//estimated the shrinked filter region
 	float	T_LightWidth  = ( vPosLight.w - Zmin ) * ( fFilterSize ) / vPosLight.w;
 	float	S_LightWidth  = fLightZn * T_LightWidth  / Zmin;
-	LightWidthPersNorm  = S_LightWidth  / NpWidth,
+	LightWidthPersNorm  = S_LightWidth  / NpWidth;
 		
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( light_per_row == 6 )	//slightly increase the subdivision level
+	if( light_per_row == 8 )	//slightly increase the subdivision level
 		light_per_row = 8;
 		
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
