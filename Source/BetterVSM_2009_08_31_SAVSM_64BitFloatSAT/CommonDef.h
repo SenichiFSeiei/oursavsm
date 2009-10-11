@@ -87,7 +87,7 @@ struct Biases
 #define USE_LINEAR_Z
 
 //#define EVSM
-#define EXPC 1
+#define EXPC 10
 
 //#define DUAL_EVSM
 
