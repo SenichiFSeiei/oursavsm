@@ -337,7 +337,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		light_per_row = 8;
 		light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		//uncomment the line below to see regions subdivided
-		//return float4(1,0,1,1);
+		return float4(1,0,1,1);
 	}
 	
 	//used to scale float to integer and vice versa

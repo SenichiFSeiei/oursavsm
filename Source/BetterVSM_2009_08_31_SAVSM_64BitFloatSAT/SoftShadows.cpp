@@ -229,8 +229,8 @@ static void InitApp()
 	g_SampleUI.AddCheckBox( IDC_FRAME_DUMP, L"Dump Frame", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 15, iY+=25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_LIGHT_PAR, L"Dump Light Para", 150, iY, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 15, iY += 25, 124, 22, true);
-    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 150, iY, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 15, iY += 25, 124, 22, false);
+    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 150, iY, 124, 22, true);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 15, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 150, iY, 124, 22, false);
 
@@ -537,10 +537,10 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
         ShadowAlgorithm = ((CDXUTComboBox*)pControl)->GetSelectedIndex();
         break;
 	case IDC_LIGHT_ZN:
-        g_Widget.SetLightZn( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/5 );
+        g_Widget.SetLightZn( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/2 );
 		break;
 	case IDC_LIGHT_ZF:
-        g_Widget.SetLightZf( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+10 );
+        g_Widget.SetLightZf( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+30 );
 		break;
 	case IDC_LIGHT_FOV:
         g_Widget.SetLightFov((float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/10);
