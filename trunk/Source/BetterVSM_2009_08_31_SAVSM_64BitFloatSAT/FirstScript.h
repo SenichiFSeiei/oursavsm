@@ -1,7 +1,7 @@
 #ifndef FIRSTSCRIPT
 #define FIRSTSCRIPT
 
-#define DEPTH_RES 512
+#define DEPTH_RES 1024
 #define N_LEVELS 10
 //#define RES_REV float g_fResRev[N_LEVELS] = { 1./512, 1./256, 1./128, 1./64, 1./32, 1./16, 1./8, 1./4, 1./2 };
 #define RES_REV float g_fResRev[N_LEVELS] = { 1./1024, 1./512, 1./256, 1./128, 1./64, 1./32, 1./16, 1./8, 1./4, 1./2 };
