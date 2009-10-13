@@ -94,7 +94,8 @@ float4 phong_shading( float3 light_space_pos, float3 light_space_camera_pos, flo
 
 float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 {
-	float lit_bias = 0.005;
+	float lit_bias = 0.00;
+	float occ_depth_limit = 0.02;
 #ifdef EVSM
 	float  expCZ = exp(pixel_linear_z*EXPC);
 #endif
@@ -161,7 +162,7 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 		occ_depth = log(occ_depth);
 		occ_depth /= EXPC;
 	#else
-		occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+		occ_depth = max( occ_depth_limit,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 	#endif
 		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
 		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
@@ -187,7 +188,7 @@ uint4 SampleSatVSMBilinear( float2 texC )
 
 float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 {
-	float lit_bias = 0.005;
+	float lit_bias = 0.00;
 #ifdef EVSM
 	float  expCZ = exp(pixel_linear_z*EXPC);
 #endif
