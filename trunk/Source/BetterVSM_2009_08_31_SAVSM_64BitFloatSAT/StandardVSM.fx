@@ -194,7 +194,7 @@ float est_occ_depth_and_chebshev_ineq_blur( float bias,int light_per_row, float 
 	float  expCZ = exp(pixel_linear_z*EXPC);
 #endif
 	float4 moments = {0.0,0.0,0.0,0.0};
-	float  sub_light_size_01 = 20.0f/DEPTH_RES;//( BRight - BLeft )  / light_per_row;
+	float  sub_light_size_01 = floor((( BRight - BLeft )  / light_per_row)*DEPTH_RES)/DEPTH_RES;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
 	
 	float2 curr_lt = float2( BLeft, BTop );
@@ -289,7 +289,7 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	float  expCZ = exp(pixel_linear_z*EXPC);
 #endif
 	float4 moments = {0.0,0.0,0.0,0.0};
-	float  sub_light_size_01 = 10.0f/DEPTH_RES;//( BRight - BLeft ) / light_per_row;
+	float  sub_light_size_01 =( BRight - BLeft ) / light_per_row;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
 	
 	float2 curr_lt = float2( BLeft, BTop );
@@ -351,7 +351,7 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	{
 		float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
 
-		float VARx = E_sqr_x - Ex * Ex;
+		float VARx = max(E_sqr_x - Ex * Ex,0.000001);
 	#ifdef EVSM
 		float est_depth = expCZ - Ex;
 	#else
@@ -367,6 +367,8 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	#endif
 		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
 		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
+		//if( VARx == 0.0001 )
+		//	fPartLit /= 2;
 	}
 	return Ex;
 }
@@ -462,7 +464,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
-	est_occ_depth_and_chebshev_ineq_blur( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq_bilinear( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
