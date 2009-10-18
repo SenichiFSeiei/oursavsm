@@ -16,7 +16,7 @@
 
 //model of the static objects-----------------------
 #define STATIC_OBJECT_SOURCE0 L"plane_stone.x"
-#define STATIC_OBJECT_SOURCE1 L"plane_stone.x"
+#define STATIC_OBJECT_SOURCE1 L"quad_staple.x"
 //-------------------------------------------------
 
 #define MAX_BONE_MATRICES 100
