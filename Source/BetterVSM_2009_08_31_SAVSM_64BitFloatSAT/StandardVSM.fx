@@ -520,7 +520,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		return float4(1,0,0,1);
 	
 	//this is the variable used to control the level of filter area subdivision	
-	int    light_per_row = 4;
+	int    light_per_row = 2;
 	//those stuck in complex depth relationship are subdivided, others dont
 	if( pixel_linear_z + 0.059 < max_depth && pixel_linear_z > min_depth + 0.06 )
 	{
@@ -548,8 +548,8 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( light_per_row == 8 )	//slightly increase the subdivision level
-		light_per_row = 12;
+	if( light_per_row == 10 )	//slightly increase the subdivision level
+		light_per_row = 10;
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
