@@ -380,6 +380,14 @@ LRESULT CALLBACK MsgProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bo
 void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserContext)
 {
     if( !bKeyDown )	return;
+	if( g_SampleUI.GetCheckBox(IDC_BMOVECAMERA)->GetChecked() )
+	{
+		g_Camera.OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
+	}
+	else
+	{
+		g_LCamera[0].OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
+	}
     switch( nChar )
     {
     case VK_F1:
@@ -410,112 +418,7 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
 			g_MipVSM.m_bShaderChanged = true;
 		}
 		break;
-	case VK_LEFT:
-		{
-			//D3DXMATRIX mTmp;
-			//D3DXMatrixInverse(&mTmp, NULL, g_Camera.GetViewMatrix());
-			D3DXVECTOR3 offset(-0.05,0,0);
-			//D3DXVECTOR4 transformed_off;
-			//D3DXVec3Transform( &transformed_off, &offset, &mTmp );
-			//D3DXVECTOR3 off3( transformed_off.x, transformed_off.y, transformed_off.z );
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;
-	case VK_RIGHT:
-		{
-			D3DXVECTOR3 offset(0.05,0,0);
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;	
-	case VK_UP:
-		{
-			D3DXVECTOR3 offset(0,0,-0.05);
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;
-	case VK_DOWN:
-		{
-			D3DXVECTOR3 offset(0,0,0.05);
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;	
-	case 0x52://r
-		{
-			D3DXVECTOR3 offset(0,0.05,0);
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;	
-	case 0x46://f
-		{
-			D3DXVECTOR3 offset(0,-0.05,0);
-			for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++ light_idx )
-			{
-				g_LCamera[light_idx].MoveLight(&offset);
-
-			}
-		}
-		break;	
-	case 0x41://a
-		{
-			D3DXVECTOR3 offset(-0.05,0,0);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;
-	case 0x44://d
-		{
-			D3DXVECTOR3 offset(0.05,0,0);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;	
-	case 0x57://w
-		{
-			D3DXVECTOR3 offset(0,0,-0.05);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;
-	case 0x53://s
-		{
-			D3DXVECTOR3 offset(0,0,0.05);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;	
-	case 0x51://q
-		{
-			D3DXVECTOR3 offset(0,0.05,0);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;	
-	case 0x45://e
-		{
-			D3DXVECTOR3 offset(0,-0.05,0);
-			g_Camera.MoveLight(&offset);
-
-		}
+	default:
 		break;
     }
 }

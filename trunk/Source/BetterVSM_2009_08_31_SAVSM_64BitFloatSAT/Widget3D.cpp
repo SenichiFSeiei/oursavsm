@@ -387,3 +387,4 @@ void Widget3D::ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float 
 	fCtrledLightZf   = m_fCtrledLightZf; 
 	fCtrledLightFov  = m_fCtrledLightFov;
 }
+
