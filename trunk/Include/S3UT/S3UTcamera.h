@@ -32,6 +32,7 @@ public:
     virtual void SetProjParams(FLOAT fFOV, FLOAT fAspect, D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
     void SetProjParams(D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
 	void SetProjParams(FLOAT fFOV, FLOAT fAspect, FLOAT fNear,	FLOAT fFar);
+	void OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserContext);
 
     void SetModelRot(const D3DXMATRIX &m)
     { m_mModelRot = m; }
