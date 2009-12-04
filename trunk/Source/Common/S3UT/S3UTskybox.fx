@@ -83,7 +83,7 @@ SkyboxVS_Output SkyboxVS( SkyboxVS_Input Input )
 float4 SkyboxPS( SkyboxVS_Output Input ) : SV_Target
 {
     float4 Color = g_EnvironmentTexture.Sample( BilinearSampler, Input.Tex );
-
+	Color.a = 64.0/256.0;
     return Color;
 }
 
@@ -92,7 +92,7 @@ float4 SkyboxWithFloorColorPS(SkyboxVS_Output Input) : SV_Target
     float t =  saturate( -10.0 * Input.Tex.y );
 
     float4 Color = lerp( g_SkyboxIntensity * g_EnvironmentTexture.Sample( BilinearSampler, Input.Tex ), g_FloorColor, t );
-
+	Color.a = 3.14;
     return Color;
 }
 

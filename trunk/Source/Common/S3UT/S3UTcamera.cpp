@@ -73,3 +73,93 @@ void S3UTCamera::SetProjParams(FLOAT fFOV, FLOAT fAspect, FLOAT fNear,	FLOAT fFa
     
     CModelViewerCamera::SetProjParams(fFOV, fAspect, fNear, fFar);
 }
+
+void S3UTCamera::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserContext)
+{
+    if( !bKeyDown )	return;
+    switch( nChar )
+    {
+	case VK_LEFT:
+		{
+			D3DXVECTOR3 offset(-0.05,0,0);
+			MoveLight(&offset);
+		}
+		break;
+	case VK_RIGHT:
+		{
+			D3DXVECTOR3 offset(0.05,0,0);
+			MoveLight(&offset);
+		}
+		break;	
+	case VK_UP:
+		{
+			D3DXVECTOR3 offset(0,0,-0.05);
+			MoveLight(&offset);
+		}
+		break;
+	case VK_DOWN:
+		{
+			D3DXVECTOR3 offset(0,0,0.05);
+			MoveLight(&offset);
+		}
+		break;	
+	case 0x52://r
+		{
+			D3DXVECTOR3 offset(0,0.05,0);
+			MoveLight(&offset);
+		}
+		break;	
+	case 0x46://f
+		{
+			D3DXVECTOR3 offset(0,-0.05,0);
+			MoveLight(&offset);
+		}
+		break;	
+/*
+	case 0x41://a
+		{
+			D3DXVECTOR3 offset(-0.05,0,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;
+	case 0x44://d
+		{
+			D3DXVECTOR3 offset(0.05,0,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x57://w
+		{
+			D3DXVECTOR3 offset(0,0,-0.05);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;
+	case 0x53://s
+		{
+			D3DXVECTOR3 offset(0,0,0.05);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x51://q
+		{
+			D3DXVECTOR3 offset(0,0.05,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;	
+	case 0x45://e
+		{
+			D3DXVECTOR3 offset(0,-0.05,0);
+			g_Camera.MoveLight(&offset);
+
+		}
+		break;
+*/
+	default:
+		break;
+    }
+}
