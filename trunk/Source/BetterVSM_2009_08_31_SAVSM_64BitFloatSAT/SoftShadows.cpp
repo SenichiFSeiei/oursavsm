@@ -525,6 +525,7 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 	g_pCamManager = new S3UTCameraManager();
 	g_pCamManager->ConfigCameras("Cameras.txt");
 	g_pCamManager->DumpCameraStatus("DumpResult.txt");
+	g_pCamManager->Eye(1);
 
 	g_pSkyBox    = new S3UTSkybox();
 	//g_pEnvMap    = new HDRCubeTexture;
