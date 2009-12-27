@@ -642,14 +642,14 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
         ID3D10Texture2D *pTexture = NULL;
         D3D10_TEXTURE2D_DESC textureDesc;
         m_pSatTexes[0]->GetDesc(&textureDesc);
-        textureDesc.Format = DXGI_FORMAT_R32_FLOAT;
+        textureDesc.Format = SAT_FORMAT;
         textureDesc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
         textureDesc.Usage = D3D10_USAGE_STAGING;
         textureDesc.BindFlags = 0;
         V(pDev10->CreateTexture2D(&textureDesc, NULL, &pTexture));
-        pDev10->CopyResource(pTexture, m_pSatTexes[0]);
+        pDev10->CopyResource(pTexture, m_pSatTexes[6%SSMap::NUM_SAT_TMP_TEX]);
 		//if( 0 == iidx )
-			D3DX10SaveTextureToFile(pTexture, D3DX10_IFF_DDS, L"e:\\firstsm.dds");
+			D3DX10SaveTextureToFile(pTexture, D3DX10_IFF_DDS, L"e:\\SatVSM.dds");
 		/*else if( 1 == iidx )
 			D3DX10SaveTextureToFile(pTexture, D3DX10_IFF_DDS, L"c:\\fff1.dds");
 		else if( 2 == iidx )
@@ -660,6 +660,18 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
 		iidx = iidx%NUM_LIGHT;*/
 
     }
+	if(0)
+	{
+        ID3D10Texture2D *pTexture = NULL;
+        D3D10_TEXTURE2D_DESC textureDesc;
+        m_pDepthMip2->GetDesc(&textureDesc);
+        textureDesc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
+        textureDesc.Usage = D3D10_USAGE_STAGING;
+        textureDesc.BindFlags = 0;
+        V(pDev10->CreateTexture2D(&textureDesc, NULL, &pTexture));
+        pDev10->CopyResource(pTexture,m_pDepthMip2);
+		D3DX10SaveTextureToFile(pTexture, D3DX10_IFF_DDS, L"e:\\DepthMip2.dds");
+	}
 
     V(m_pOldRenderState->Apply());
 }
