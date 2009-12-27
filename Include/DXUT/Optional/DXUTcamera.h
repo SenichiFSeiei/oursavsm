@@ -127,6 +127,8 @@ public:
     const D3DXVECTOR3* GetLookAtPt() const   { return &m_vLookAt; }
     float GetNearClip() const { return m_fNearPlane; }
     float GetFarClip() const { return m_fFarPlane; }
+	float GetFOV() const { return m_fFOV; }
+	float GetAspectRatio() const { return m_fAspect; }
 
     bool IsBeingDragged() const         { return (m_bMouseLButtonDown || m_bMouseMButtonDown || m_bMouseRButtonDown); }
     bool IsMouseLButtonDown() const     { return m_bMouseLButtonDown; } 
