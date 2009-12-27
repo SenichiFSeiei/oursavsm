@@ -45,6 +45,7 @@ public:
 	void OnD3D10DestroyDevice( void* pUserContext = NULL );
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
+
 	~StdVSM();
 	void set_bias( float fDefaultDepthBias, float f3rdDepthDelta, float f1stDepthDelta ) 
 	{ m_f3rdDepthDelta = f3rdDepthDelta, m_f1stDepthDelta = f1stDepthDelta; m_fMainBias = fDefaultDepthBias;}
@@ -165,17 +166,23 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	D3DXMatrixMultiply(&ssmap.mLightViewProj, &mLightView, &ssmap.mLightProj);
     
     V(m_pEffect->GetVariableByName("fLightZf")->AsScalar()->SetFloat(g_LCameraRef.GetFarClip()));
+	DumpFloat( "fLightZf.txt",g_LCameraRef.GetFarClip() );
 	V(m_pEffect->GetVariableByName("fLightZn")->AsScalar()->SetFloat(g_LCameraRef.GetNearClip()));
+	DumpFloat( "fLightZn.txt",g_LCameraRef.GetNearClip() );
 
     V(m_pEffect->GetVariableByName("mLightViewProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightViewProj));
+	DumpMatrices( "mLightViewProj.txt", ssmap.mLightViewProj );
     V(m_pEffect->GetVariableByName("mLightView")->AsMatrix()->SetMatrix((float *)&mLightView));
+	DumpMatrices( "mLightView.txt", mLightView );
 	V(m_pEffect->GetVariableByName("mLightProj")->AsMatrix()->SetMatrix((float *)&ssmap.mLightProj));
+	DumpMatrices( "mLightProj.txt", ssmap.mLightProj );
 
 	//--------------------- for specular
 	D3DXVECTOR3 vCameraInLight, vZero = D3DXVECTOR3(0, 0, 0);
 	D3DXVec3TransformCoord(&vCameraInLight, &vZero, &mWorldViewInv);
 	D3DXVec3TransformCoord(&vCameraInLight, &vCameraInLight, &mLightView);
 	V(m_pEffect->GetVariableByName("VCameraInLight")->AsVector()->SetRawValue(&vCameraInLight, 0, sizeof(vCameraInLight)));
+	DumpVec3( "VCameraInLight.txt",vCameraInLight );
 	//-------------------------------------------------------------------------------------------------------------------------
 
 	//Originally these are set inside soft shadow map class, I moved them our for more neat design
@@ -194,6 +201,7 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
     D3DXMatrixMultiply(&mTmp, &ssmap.mLightProj, &mClip2Tex);
     D3DXMatrixInverse(&mLightProjClip2TexInv, NULL, &mTmp);
     V(m_pEffect->GetVariableByName("mLightProjClip2TexInv")->AsMatrix()->SetMatrix((float *)&mLightProjClip2TexInv));
+	DumpMatrices( "mLightProjClip2TexInv.txt",mLightProjClip2TexInv );
 
 	pDev10->IASetInputLayout(m_pMaxLayout);
 
@@ -205,9 +213,11 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
     }
 
     V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mWorldViewProj));
+	DumpMatrices( "mViewProj.txt",mWorldViewProj );
 
 	float fTmp = (FLOAT)(g_fFilterSize*LIGHT_SCALE_FACTOR);
-    V(m_pEffect->GetVariableByName("fFilterSize")->AsScalar()->SetFloat(fTmp));
+    //V(m_pEffect->GetVariableByName("fFilterSize")->AsScalar()->SetFloat(fTmp));
+	DumpFloat( "fFilterSize.txt",fTmp );
     
 	V(m_pEffect->GetVariableByName("TexPosInWorld")->AsShaderResource()->SetResource( m_pInputBuffer->m_pInputAttributes->m_pSRView0));
 	V(m_pEffect->GetVariableByName("TexNormalInWorld")->AsShaderResource()->SetResource( m_pInputBuffer->m_pInputAttributes->m_pSRView1));
