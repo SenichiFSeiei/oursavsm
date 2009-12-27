@@ -28,6 +28,8 @@ public:
 		eUnknown
 	};
 
+	S3UTCamera():CModelViewerCamera() {m_bIsActive = false;};
+
     virtual void SetProjParams(FLOAT fFOV, FLOAT fAspect, D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
     void SetProjParams(D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
 	void SetProjParams(FLOAT fFOV, FLOAT fAspect, FLOAT fNear,	FLOAT fFar);
@@ -47,10 +49,13 @@ public:
 	float GetLightSize() const { return m_fLightSize; };
 	void  SetLightSize( float lightSize ) { m_fLightSize = lightSize; };
 
+	void SetActive( bool isActive ) { m_bIsActive = isActive; };
+	bool IsActive() { return m_bIsActive; };
 
 private:
 	CameraType	m_eCamType;
 	string		m_sName;
+	bool		m_bIsActive;
 	bool		m_bCastShadow;
 	float		m_fLightSize;
 };
