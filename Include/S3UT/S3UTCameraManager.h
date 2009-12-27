@@ -28,6 +28,9 @@ public:
 	void DumpCameraStatus( char *fileName ) const;
 	S3UTCamera *Eye( int num );//start counting from 0
 
+	void OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
+
+
 private:
 	void Clear();
 	vector<S3UTCamera *> m_aPtrCameras;
