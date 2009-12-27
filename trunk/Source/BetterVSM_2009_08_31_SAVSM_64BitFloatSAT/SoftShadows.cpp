@@ -8,6 +8,7 @@
 #include <sdkmisc.h>
 
 #include <S3UTcamera.h>
+#include <S3UTCameraManager.h>
 #include <S3UTmesh.h>
 #include "SoftShadowMap.h"
 #include "SilhouetteBackprojection.h"
@@ -31,9 +32,10 @@
 #define MAX_WCHAR_SIZE      260
 
 static S3UTCamera g_Camera;
-
 //light management
 static S3UTCamera g_LCamera[NUM_LIGHT];
+static S3UTCameraManager *g_pCamManager;
+
 static Widget3D g_Widget;
 
 static CD3DSettingsDlg g_D3DSettingsDlg;
@@ -230,7 +232,7 @@ static void InitApp()
     g_SampleUI.AddCheckBox( IDC_BDUMP_SHADOWMAP, L"Dump Shadow Map", 15, iY+=25, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_BDUMP_LIGHT_PAR, L"Dump Light Para", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_STATIC, L"Freeze Model", 15, iY += 25, 124, 22, false);
-    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 150, iY, 124, 22, true);
+    g_SampleUI.AddCheckBox( IDC_ANIMATE, L"Show Animated Model", 150, iY, 124, 22, false);
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 15, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 150, iY, 124, 22, false);
 
@@ -270,7 +272,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
        //-------------------------------------------------------------------------
        //Initialize test command window
        //-------------------------------------------------------------------------
-    //RedirectIOToConsole(L"output window");
+    RedirectIOToConsole(L"output window");
     // DXUT will create and use the best device (either D3D9 or D3D10) 
     // that is available on the system depending on which D3D callbacks are set below
 
@@ -518,8 +520,11 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 //--------------------------------------------------------------------------------------
 HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext)
 {
-
 	HRESULT hr;
+
+	g_pCamManager = new S3UTCameraManager();
+	g_pCamManager->ConfigCameras("Cameras.txt");
+	g_pCamManager->DumpCameraStatus("DumpResult.txt");
 
 	g_pSkyBox    = new S3UTSkybox();
 	//g_pEnvMap    = new HDRCubeTexture;
@@ -1189,6 +1194,8 @@ void CALLBACK OnD3D10SwapChainReleasing( void* pUserContext )
 //--------------------------------------------------------------------------------------
 void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 {
+	SAFE_DELETE( g_pCamManager );
+
     g_DialogResourceManager.OnD3D10DestroyDevice();
     g_D3DSettingsDlg.OnD3D10DestroyDevice();
     SAFE_RELEASE(g_pFont10);
