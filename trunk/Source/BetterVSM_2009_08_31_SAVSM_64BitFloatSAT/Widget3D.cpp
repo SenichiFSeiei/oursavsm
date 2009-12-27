@@ -340,13 +340,11 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 }
 
 
-void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize, bool doRecord )
+void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize )
 {
 	DrawLightSource( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
 	DrawAxis( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
 	DrawFrustum( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
-	if( doRecord )
-		DumpParameters();
 }
 
 void Widget3D::OnD3D10DestroyDevice()
