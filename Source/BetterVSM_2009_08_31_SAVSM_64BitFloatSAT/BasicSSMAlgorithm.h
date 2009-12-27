@@ -33,4 +33,46 @@ public:
 	{
 		m_pInputBuffer = par_pInputBuffer;
 	}
+	void DumpMatrices( char *FileName,D3DXMATRIX &mat );
+	void DumpFloat( char *FileName, float val );
+	void DumpVec3( char *FileName, D3DXVECTOR3 vec );
+
 };
+
+//#define B_DO_DUMP
+void BasicSSMAlgorithm::DumpMatrices( char *FileName,D3DXMATRIX &mat )
+{
+#ifdef B_DO_DUMP
+	FILE *fp= fopen( FileName,"w" );
+	fprintf( fp, "float4x4(" );
+	for( int i = 0; i < 4; ++i )
+	{
+		fprintf( fp, "float4(" );
+		for( int j = 0; j < 4; ++j )
+		{
+			fprintf( fp, "%f,", mat(i,j) ); 
+		}
+		fprintf( fp, "),\n" );
+	}
+	fprintf( fp, ");\n" );
+	fclose( fp );
+#endif
+}
+
+void BasicSSMAlgorithm::DumpFloat( char *FileName, float val )
+{
+#ifdef B_DO_DUMP
+	FILE *fp = fopen( FileName,"w" );
+	fprintf( fp, "%f", val );
+	fclose( fp );
+#endif
+}
+
+void BasicSSMAlgorithm::DumpVec3( char *FileName, D3DXVECTOR3 vec )
+{
+#ifdef B_DO_DUMP
+	FILE *fp = fopen( FileName,"w" );
+	fprintf( fp, "float4(%f,%f,%f)", vec.x,vec.y,vec.z );
+	fclose( fp );
+#endif
+}
