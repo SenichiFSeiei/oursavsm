@@ -102,7 +102,23 @@ void S3UTCamera::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUse
 			D3DXVECTOR3 offset(0,0,0.05);
 			MoveLight(&offset);
 		}
+		break;
+	case 0x45://e
+		{
+			D3DXVECTOR3 offset(0,0.05,0);
+			MoveLight(&offset);
+
+		}
+		break;
+	case 0x44://d
+		{
+			D3DXVECTOR3 offset(0,-0.05,0);
+			MoveLight(&offset);
+
+		}
 		break;	
+
+/*
 	case 0x52://r
 		{
 			D3DXVECTOR3 offset(0,0.05,0);
@@ -115,7 +131,6 @@ void S3UTCamera::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUse
 			MoveLight(&offset);
 		}
 		break;	
-/*
 	case 0x41://a
 		{
 			D3DXVECTOR3 offset(-0.05,0,0);
@@ -123,13 +138,6 @@ void S3UTCamera::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUse
 
 		}
 		break;
-	case 0x44://d
-		{
-			D3DXVECTOR3 offset(0.05,0,0);
-			g_Camera.MoveLight(&offset);
-
-		}
-		break;	
 	case 0x57://w
 		{
 			D3DXVECTOR3 offset(0,0,-0.05);
@@ -151,13 +159,7 @@ void S3UTCamera::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUse
 
 		}
 		break;	
-	case 0x45://e
-		{
-			D3DXVECTOR3 offset(0,-0.05,0);
-			g_Camera.MoveLight(&offset);
 
-		}
-		break;
 */
 	default:
 		break;
