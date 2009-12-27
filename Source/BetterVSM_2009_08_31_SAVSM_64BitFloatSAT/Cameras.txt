@@ -1,0 +1,32 @@
+right_above light
+CastShadow	1
+Position	-0.368096 10.618182 1.001415
+AtPosition	0.0 6.0 1
+Size		0.290000
+ZNear		8.200000
+ZFar		14.000000
+FieldOfView 1.382301
+AspectRatio 1.0
+
+front eye
+CastShadow	0
+Position	1.0 0.0 0.0
+AtPosition	0.0 2.0 0.0
+Size		0.0000
+ZNear		0.100000
+ZFar		100.000000
+FieldOfView 1.0
+AspectRatio 1.0
+
+
+
+
+back light
+CastShadow	0
+Position	10000.0 0.0 0.0
+AtPosition	0.0 20000.0 0.0
+Size		0.0000
+ZNear		100000
+ZFar		100
+FieldOfView 1.0
+AspectRatio 1.0
