@@ -216,7 +216,7 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	DumpMatrices( "mViewProj.txt",mWorldViewProj );
 
 	float fTmp = (FLOAT)(g_fFilterSize*LIGHT_SCALE_FACTOR);
-    //V(m_pEffect->GetVariableByName("fFilterSize")->AsScalar()->SetFloat(fTmp));
+    V(m_pEffect->GetVariableByName("fFilterSize")->AsScalar()->SetFloat(fTmp));
 	DumpFloat( "fFilterSize.txt",fTmp );
     
 	V(m_pEffect->GetVariableByName("TexPosInWorld")->AsShaderResource()->SetResource( m_pInputBuffer->m_pInputAttributes->m_pSRView0));
