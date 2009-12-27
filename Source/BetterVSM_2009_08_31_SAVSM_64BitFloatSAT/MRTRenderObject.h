@@ -47,7 +47,7 @@ public:
 									double fTime, float fElapsedTime, void* pUserContext, float r=0,float g=0,float b=0,float a = 0 );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
 	void	OnD3D10DestroyDevice( void* pUserContext = NULL );
-	void	DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10  );
+	void	DumpFrameResult( ID3D10Texture2D *pSrcTex,WCHAR *FileName,ID3D10Device* pDev10 );
 
 	ID3D10Texture2D				*m_pTexture0;
 	ID3D10Texture2D				*m_pTexture1;
@@ -308,6 +308,8 @@ void	MRTRenderObject::OnD3D10FrameRender(   ID3D10Effect *m_pEffect,
 						fTime,fElapsedTime,pUserContext );
 
 	 pDev10->OMSetRenderTargets(1, &pOrigRTV, pOrigDSV);
+	 //DumpFrameResult( m_pTexture0,L"e:\\TexPosInWorld.dds",pDev10 );
+	 //DumpFrameResult( m_pTexture1,L"e:\\TexNormalInWorld.dds",pDev10 );
 
 }
 
@@ -318,23 +320,23 @@ void	MRTRenderObject::OnD3D10DestroyDevice( void* pUserContext )
 	SAFE_RELEASE( m_pLayout );
 }
 
-void	MRTRenderObject::DumpFrameResult( WCHAR *FileName,ID3D10Device* pDev10 )
+void	MRTRenderObject::DumpFrameResult( ID3D10Texture2D *pSrcTex,WCHAR *FileName,ID3D10Device* pDev10 )
 {
 	HRESULT hr;
-	
-	ID3D10Texture2D *pTex = NULL;
-    D3D10_TEXTURE2D_DESC textureDesc;
-    m_pTexture0->GetDesc(&textureDesc);
-	textureDesc.Format = m_Tex0Desc.Format;
-    textureDesc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
-    textureDesc.Usage = D3D10_USAGE_STAGING;
-    textureDesc.BindFlags = 0;
-    V(pDev10->CreateTexture2D(&textureDesc, NULL, &pTex));
-    pDev10->CopyResource(pTex, m_pTexture0);
-    
-	D3DX10SaveTextureToFile(pTex, D3DX10_IFF_DDS, FileName);
+	{
+		ID3D10Texture2D *pTex = NULL;
+		D3D10_TEXTURE2D_DESC textureDesc;
+		pSrcTex->GetDesc(&textureDesc);
+		textureDesc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
+		textureDesc.Usage = D3D10_USAGE_STAGING;
+		textureDesc.BindFlags = 0;
+		V(pDev10->CreateTexture2D(&textureDesc, NULL, &pTex));
+		pDev10->CopyResource(pTex, pSrcTex);
+	    
+		D3DX10SaveTextureToFile(pTex, D3DX10_IFF_DDS, FileName);
 
-	SAFE_RELEASE( pTex );
+		SAFE_RELEASE( pTex );
+	}
 
 }
 #endif
