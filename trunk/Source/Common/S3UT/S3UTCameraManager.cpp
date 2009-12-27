@@ -151,4 +151,17 @@ S3UTCamera* S3UTCameraManager::Eye( int num )
 	return NULL;
 }
 
+void S3UTCameraManager::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
+{
+	vector<S3UTCamera *>::const_iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		//this is not absolutely right. since, lights should have there own width and height,
+		//but it's OK, SetWindow only affects the mouse interaction with UI
+		( *iter )->	SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
+			
+	}
+}
+
+
 //remember to write a *CORRECT* destructor
