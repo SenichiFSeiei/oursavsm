@@ -378,26 +378,6 @@ void Widget3D::ReadParameters()
 	fscanf( fp, "%f\n", &m_fCtrledLightZf );
 	fscanf( fp, "%f\n", &m_fCtrledLightFov );
 	fclose( fp );
-	/*
-	char name[100];
-	FILE *fp = fopen("SceneParameters2.txt","r");
-	
-	fscanf( fp, "%s", name );
-	string name2( name );
-	switch( name2 )
-	{
-	case "lightPos":
-		break;
-	default:
-		break;
-	}
-	fscanf( fp, "%f %f %f\n", &m_vLight.x,&m_vLight.y,&m_vLight.z );
-	fscanf( fp, "%s %f\n", name,&m_fLightSize );
-	fscanf( fp, "%s %f\n", name,&m_fCtrledLightZn );
-	fscanf( fp, "%s %f\n", name,&m_fCtrledLightZf );
-	fscanf( fp, "%s %f\n", name,&m_fCtrledLightFov );
-	fclose( fp );
-	*/
 }
 
 void Widget3D::ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov)
