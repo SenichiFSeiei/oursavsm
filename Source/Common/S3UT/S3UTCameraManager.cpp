@@ -5,6 +5,8 @@
 // Copyright (c) 2009 _COMPANYNAME_ Corporation. All rights reserved.
 //
 //----------------------------------------------------------------------------------
+#include <Winnls.h>
+
 #include <DXUT.h>
 #include "S3UTcamera.h"
 #include "S3UTCameraManager.h"
@@ -151,6 +153,39 @@ S3UTCamera* S3UTCameraManager::Eye( int num )
 	return NULL;
 }
 
+class IsACameraOf
+{
+public:
+	IsACameraOf( S3UTCamera::CameraType camType ):m_tCamType(camType){};
+	bool operator() ( S3UTCamera *pCam ) const
+	{
+		return pCam->GetCamType() == m_tCamType;
+	}
+private:
+	S3UTCamera::CameraType m_tCamType;
+};
+
+class IsAnActiveCameraOf
+{
+public:
+	IsAnActiveCameraOf( S3UTCamera::CameraType camType ):m_tCamType(camType){};
+	bool operator() ( S3UTCamera *pCam ) const
+	{
+		IsACameraOf isSuchCam( m_tCamType );
+		return isSuchCam( pCam )&&pCam->IsActive();
+	}
+private:
+	S3UTCamera::CameraType m_tCamType;
+};
+
+S3UTCamera *S3UTCameraManager::ActiveEye()//the 1st active eye camera.
+{
+	vector<S3UTCamera *>::iterator iter = find_if( m_aPtrCameras.begin(),m_aPtrCameras.end(),IsAnActiveCameraOf(S3UTCamera::eEye));
+	if( iter == m_aPtrCameras.end() )
+		iter = find_if( m_aPtrCameras.begin(),m_aPtrCameras.end(),IsACameraOf(S3UTCamera::eEye));
+	return (*iter);
+}
+
 void S3UTCameraManager::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
 {
 	vector<S3UTCamera *>::const_iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
@@ -160,6 +195,72 @@ void S3UTCameraManager::OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwap
 		//but it's OK, SetWindow only affects the mouse interaction with UI
 		( *iter )->	SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
 			
+	}
+}
+
+S3UTCamera *S3UTCameraManager::Camera( int num )
+{
+	if( num<0 || num>CameraCount() )
+	{
+		printf( "Invalid camera index, should be from 0 to %d.\n",CameraCount() );
+		return 0;
+	}
+	return m_aPtrCameras[num];
+}
+
+void S3UTCameraManager::SetupCameraUI( CDXUTDialog &camUI ) const
+{	
+	int charWidth = 5;
+	int textHeight = 22;
+	int colSpace = 10;
+	D3DXCOLOR fontColor( 0.3f, 0.7f, 0.1f, 1.0f );
+
+	camUI.AddStatic(8, L"Light UI", 0, 0, 200, 22);
+	camUI.GetControl(8)->SetTextColor( fontColor );
+
+	int camIdx = 0;
+	vector<S3UTCamera *>::const_iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		int textCursorX = 0;
+		int len = strlen((*iter)->GetCamName().c_str()) + 1;
+		int nwLen = MultiByteToWideChar(CP_ACP,0,(*iter)->GetCamName().c_str(),len,NULL,0);   
+		TCHAR   lpszCamName[256];   
+		MultiByteToWideChar(CP_ACP,0,(*iter)->GetCamName().c_str(),len,lpszCamName,nwLen);   
+
+		camUI.AddStatic( HANDLE_BASE+camIdx, lpszCamName, textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+		camUI.GetControl(HANDLE_BASE+camIdx)->SetTextColor( fontColor );
+
+		textCursorX += colSpace;
+
+		if( (*iter)->GetCamType() == S3UTCamera::eEye )
+			camUI.AddStatic( HANDLE_BASE+camIdx, L"Eye", textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+		else if( (*iter)->GetCamType() == S3UTCamera::eLight )
+			camUI.AddStatic( HANDLE_BASE+camIdx, L"Light", textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+		camUI.GetControl(HANDLE_BASE+camIdx)->SetTextColor( fontColor );
+
+		textCursorX += 3*colSpace;
+		camUI.AddCheckBox( HANDLE_BASE+CameraCount()+camIdx, L"Active", textCursorX*charWidth, (camIdx+1)*textHeight, 100, 22, (*iter)->IsActive());
+		
+		textCursorX += 2*colSpace;
+		camUI.AddCheckBox( HANDLE_BASE+2*CameraCount()+camIdx, L"Controllable", textCursorX*charWidth, (camIdx+1)*textHeight, 100, 22, (*iter)->IsControllable());
+
+		++camIdx;
+	}
+
+}
+
+void S3UTCameraManager::SyncToCameraUI(CDXUTDialog &camUI)
+{
+	int camIdx = 0;
+	vector<S3UTCamera *>::iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		bool isActive = camUI.GetCheckBox( HANDLE_BASE+CameraCount()+camIdx )->GetChecked();
+		bool isControllable = camUI.GetCheckBox( HANDLE_BASE+2*CameraCount()+camIdx )->GetChecked();
+		(*iter)->SetActive( isActive );
+		(*iter)->SetControllable( isControllable );
+		++camIdx;
 	}
 }
 
