@@ -20,7 +20,6 @@ VS_OUT1 RenderLightVS(VS_IN invert)
     return outvert;
 }
 
-
 float4 RenderLightPS(VS_OUT1 infragm) : SV_Target0
 {
     return float4(0.5,0.2,0,1);
