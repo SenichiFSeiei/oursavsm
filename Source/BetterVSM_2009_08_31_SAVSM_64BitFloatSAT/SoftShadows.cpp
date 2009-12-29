@@ -46,6 +46,7 @@ static S3UTMesh g_MeshLight;
 static ID3DX10Font* g_pFont10 = NULL;
 static ID3DX10Sprite* g_pSprite10 = NULL;
 static CDXUTDialog g_SampleUI;
+static CDXUTDialog g_CameraUI;
 static ID3D10InputLayout *g_pMaxLayout = NULL;
 static D3DXVECTOR3 g_vLightDir;
 static ID3D10RasterizerState *g_pRenderState = NULL;
@@ -53,6 +54,7 @@ static ID3D10DepthStencilState *g_pDSState = NULL;
 //parameter
 static SSMap ssmap;
 static bool g_bShowUI = true;
+static bool g_bShowLightUI = false;
 static bool g_bMoveCamera = true;
 static float g_fFilterSizeCtrl = 0.09;
 static float g_fFilterSize = 0.09;
@@ -161,7 +163,6 @@ static void LoadNewModel(bool bNeedUI = false)
             exit(0);
         }
         D3DXVECTOR3 vLight[NUM_LIGHT]		= LIGHT_POS;
-        D3DXVECTOR3 vEye		= EYE_POS;
         D3DXVECTOR3 vLookAt		= LOOK_AT_POS;
 		//--
 		g_Widget.ProvideParameters( vLight[0], g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
@@ -173,12 +174,15 @@ static void LoadNewModel(bool bNeedUI = false)
 			g_LCamera[light_idx].SetViewParams(&vLight[light_idx], &vLookAt);
 		}
 
-        g_Camera.SetViewParams(&vEye, &vLookAt);
-
     }
 }
 static void InitApp()
 {
+	g_pCamManager = new S3UTCameraManager();
+	g_pCamManager->ConfigCameras("Cameras.txt");
+	g_pCamManager->DumpCameraStatus("DumpResult.txt");
+
+
     g_D3DSettingsDlg.Init( &g_DialogResourceManager );
     g_HUD.Init( &g_DialogResourceManager );
     g_SampleUI.Init( &g_DialogResourceManager );
@@ -188,6 +192,7 @@ static void InitApp()
 
     g_SampleUI.EnableKeyboardInput( true );
     g_SampleUI.SetCallback( OnGUIEvent );
+    
     iY = 10;
     g_SampleUI.AddStatic( IDC_SHADOW_ALGORITHM_LABEL, L"Shadow algorithm:", 35, iY, 125, 22 );
     CDXUTComboBox *pComboBox;
@@ -236,6 +241,12 @@ static void InitApp()
     g_SampleUI.AddCheckBox( IDC_SCENE, L"Show scene", 15, iY += 25, 124, 22, true);
 	g_SampleUI.AddCheckBox( IDC_FAN, L"Show Fan", 150, iY, 124, 22, false);
 
+	g_CameraUI.Init( &g_DialogResourceManager );
+	g_CameraUI.EnableKeyboardInput( true );
+	g_CameraUI.SetCallback( OnGUIEvent );
+	{
+		g_pCamManager->SetupCameraUI( g_CameraUI );
+	}
 
 
 }
@@ -326,7 +337,7 @@ bool CALLBACK ModifyDeviceSettings( DXUTDeviceSettings* pDeviceSettings, void* p
 void CALLBACK OnFrameMove( double fTime, float fElapsedTime, void* pUserContext )
 {
     // update the camera's position based on user input 
-    g_Camera.FrameMove(fElapsedTime);
+	g_pCamManager->ActiveEye()->FrameMove(fElapsedTime);
 
 	//light management
 	for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++light_idx )//FIX A LIGHT FOR CONSTANT ILLUMINATION
@@ -359,12 +370,15 @@ LRESULT CALLBACK MsgProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bo
     if( *pbNoFurtherProcessing )
         return 0;
 
+	if( g_bShowLightUI )
+	    *pbNoFurtherProcessing = g_CameraUI.MsgProc( hWnd, uMsg, wParam, lParam );
+
     // Pass all remaining windows messages to camera so it can respond to user input
     unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BMOVECAMERA)->GetChecked();
 
     if ( iTmp ) // left button pressed
-    { 
-		g_Camera.HandleMessages( hWnd, uMsg, wParam, lParam ); 
+    {
+		g_pCamManager->ActiveEye()->HandleMessages( hWnd, uMsg, wParam, lParam );
 	}
 	else{
 		//light management
@@ -384,7 +398,7 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
     if( !bKeyDown )	return;
 	if( g_SampleUI.GetCheckBox(IDC_BMOVECAMERA)->GetChecked() )
 	{
-		g_Camera.OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
+		g_pCamManager->ActiveEye()->OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
 	}
 	else
 	{
@@ -395,6 +409,9 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
     case VK_F1:
         g_bShowUI = !g_bShowUI;
         break;
+	case VK_F3:
+		g_bShowLightUI = !g_bShowLightUI;
+		break;
 	case VK_F7:
 		g_LightVary = !g_LightVary;
 		break;
@@ -521,11 +538,6 @@ bool CALLBACK IsD3D10DeviceAcceptable(UINT Adapter, UINT Output, D3D10_DRIVER_TY
 HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc, void* pUserContext)
 {
 	HRESULT hr;
-
-	g_pCamManager = new S3UTCameraManager();
-	g_pCamManager->ConfigCameras("Cameras.txt");
-	g_pCamManager->DumpCameraStatus("DumpResult.txt");
-	g_pCamManager->Eye(1);
 
 	g_pSkyBox    = new S3UTSkybox();
 	//g_pEnvMap    = new HDRCubeTexture;
@@ -655,7 +667,7 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
     V_RETURN(g_DialogResourceManager.OnD3D10ResizedSwapChain(pDev10, pBackBufferSurfaceDesc));
 
     // setup the camera projection parameters
-    g_Camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
+	g_pCamManager->OnD3D10SwapChainResized( pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext );
 
 	//light management
 	for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
@@ -668,6 +680,9 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 
     g_SampleUI.SetLocation( pBackBufferSurfaceDesc->Width-300, pBackBufferSurfaceDesc->Height-700 );
     g_SampleUI.SetSize( 170, 300 );
+    
+	g_CameraUI.SetLocation( 0, 50 );
+    g_CameraUI.SetSize( 600, 600 );
 
     switch( ShadowAlgorithm )
     {
@@ -735,6 +750,7 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElapsedTime, void* pUserContext)
 {
     HRESULT hr;
+	g_pCamManager->SyncToCameraUI(g_CameraUI);
     //dont delete, used no only here
    	const DXGI_SURFACE_DESC *pBackBufferSurfaceDesc = DXUTGetDXGIBackBufferSurfaceDesc();
 
@@ -829,7 +845,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 		old_iSta = iSta;
 		oldTime = tmp;
 	}//end light and view pos management
-	S3UTCamera& g_CameraRef = g_Camera;
+	S3UTCamera& g_CameraRef = *(g_pCamManager->ActiveEye());
 
 	// compute view matrix
 	D3DXMATRIX mTmp, mWorldView, mWorldViewProj, mWorldViewInv;
@@ -839,7 +855,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	// correct near/far clip planes according to camera location
 	D3DXVECTOR3 vBox[2];
 	float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
-	g_CameraRef.SetProjParams(D3DX_PI/3, fAspectRatio, 0.1, 500);
 
 	// clear depth and color
 	ID3D10DepthStencilView* pDSV = DXUTGetD3D10DepthStencilView();
@@ -1148,7 +1163,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
 	if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
-		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize,(bool)g_SampleUI.GetCheckBox(IDC_BDUMP_LIGHT_PAR)->GetChecked());
+		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
 
     // render UI
     if (g_bShowUI)
@@ -1157,6 +1172,10 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
         g_SampleUI.OnRender(fElapsedTime);
         //g_HUD.OnRender(fElapsedTime);
     }
+	if( g_bShowLightUI )
+	{
+		g_CameraUI.OnRender(fElapsedTime);
+	}
 
 	if( g_SampleUI.GetCheckBox( IDC_FRAME_DUMP )->GetChecked() )
 	{
