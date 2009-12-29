@@ -10,13 +10,13 @@ AspectRatio 1.0
 
 front eye
 CastShadow	0
-Position	1.0 0.0 0.0
-AtPosition	0.0 2.0 0.0
+Position	12.0 60.96 -19.6
+AtPosition	0.0 6.0 1.0
 Size		0.0000
 ZNear		0.100000
-ZFar		100.000000
-FieldOfView 1.0
-AspectRatio 1.0
+ZFar		500.000000
+FieldOfView 1.04717
+AspectRatio 1.333333
 
 
 
@@ -30,3 +30,13 @@ ZNear		100000
 ZFar		100
 FieldOfView 1.0
 AspectRatio 1.0
+
+above eye
+CastShadow	0
+Position	0.0 60.96 0
+AtPosition	0.0 6.0 1.0
+Size		0.0000
+ZNear		0.100000
+ZFar		500.000000
+FieldOfView 0.5
+AspectRatio 1.333333
