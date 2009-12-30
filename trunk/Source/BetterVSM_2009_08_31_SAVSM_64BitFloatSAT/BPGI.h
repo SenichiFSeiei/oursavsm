@@ -279,7 +279,6 @@ void BPGlobalIllumination::OnD3D10FrameRender(bool render_ogre,
 	//Originally these are set inside soft shadow map class, I moved them our for more neat design
     V(m_pEffect->GetVariableByName("DepthMip2")->AsShaderResource()->SetResource(ssmap.m_pBigDepth2SRView));
     V(m_pEffect->GetVariableByName("DepthTex0")->AsShaderResource()->SetResource(ssmap.m_pDepthSRView[0]));
-    V(m_pEffect->GetVariableByName("g_txPreviousResult")->AsShaderResource()->SetResource(m_pPreResult));
 	
 	D3DXMATRIX mClip2Tex;
     mClip2Tex = D3DXMATRIX( 0.5,    0, 0,   0,

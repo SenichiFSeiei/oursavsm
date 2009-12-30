@@ -139,7 +139,6 @@ void NoShadow::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshScene,
 	//Originally these are set inside soft shadow map class, I moved them our for more neat design
     V(m_pEffect->GetVariableByName("DepthMip2")->AsShaderResource()->SetResource(ssmap.m_pBigDepth2SRView));
     V(m_pEffect->GetVariableByName("DepthTex0")->AsShaderResource()->SetResource(ssmap.m_pDepthSRView[0]));
-    V(m_pEffect->GetVariableByName("g_txPreviousResult")->AsShaderResource()->SetResource(m_pPreResult));
 
 	
 	D3DXMATRIX mClip2Tex;

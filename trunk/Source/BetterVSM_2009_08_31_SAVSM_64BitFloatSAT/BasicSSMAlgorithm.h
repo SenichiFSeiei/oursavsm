@@ -7,17 +7,17 @@ class BasicSSMAlgorithm
 public:
 	Parameters m_par;
 	ID3D10RenderTargetView *m_pRTV;
-	ID3D10ShaderResourceView *m_pPreResult;
+	ID3D10ShaderResourceView *m_pSRV;
 	D3DXVECTOR4 m_vec4LightColor;
 	InputBuffer *m_pInputBuffer;
 	void set_parameters( Parameters par, 
 						 ID3D10RenderTargetView *pRTV, 
-						 ID3D10ShaderResourceView *pPreResult,
-						 D3DXVECTOR4 *p_light_color )
+						 D3DXVECTOR4 *p_light_color,
+						 ID3D10ShaderResourceView *pSRV = NULL)
 	{
 		m_par.fLightZn					=	par.fLightZn;
 		m_pRTV = pRTV;
-		m_pPreResult = pPreResult;
+		m_pSRV = pSRV;
 
 		if( p_light_color != NULL )
 		{
