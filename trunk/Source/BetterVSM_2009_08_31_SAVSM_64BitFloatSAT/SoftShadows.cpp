@@ -424,6 +424,7 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
 	case VK_F10:
 		ssmap.m_bShaderChanged = true;
 		g_Final.m_bShaderChanged = true;
+		g_Widget.m_bShaderChanged = true;
 		if( ShadowAlgorithm == STD_VSM )
 		{
 			g_StdVSM.m_bShaderChanged = true;
@@ -1164,7 +1165,10 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
 	if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
+	{
+		g_Widget.m_pSsmap = &ssmap;
 		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
+	}
 
     // render UI
     if (g_bShowUI)
