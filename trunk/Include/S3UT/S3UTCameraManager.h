@@ -37,7 +37,9 @@ public:
 	int CameraCount() const { return static_cast<int>(m_aPtrCameras.size()); };
 
 	void OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
-
+	void OnFrameMove( double fTime, float fElapsedTime, void* pUserContext );
+	void HandleMessages( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
+	void OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserContext);
 
 private:
 	void Clear();
