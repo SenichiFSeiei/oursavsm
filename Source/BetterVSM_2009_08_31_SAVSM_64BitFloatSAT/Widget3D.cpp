@@ -20,6 +20,7 @@ HRESULT Widget3D::CreateShader(ID3D10Device *pDev10)
         MessageBoxA(NULL, (char *)pErrors->GetBufferPointer(), "Compilation error", MB_OK);
         exit(0);
     }
+	return S_OK;
 }
 
 HRESULT Widget3D::OnD3D10CreateDevice( ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )

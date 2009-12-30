@@ -162,7 +162,6 @@ void SilhouetteBPMSSMKernel::OnD3D10FrameRender(bool render_ogre,
 	//Originally these are set inside soft shadow map class, I moved them our for more neat design
     V(m_pEffect->GetVariableByName("TexHSM")->AsShaderResource()->SetResource(ssmap.m_pBigDepth2SRView));
     V(m_pEffect->GetVariableByName("TexDepthMap")->AsShaderResource()->SetResource(ssmap.m_pDepthSRView[0]));
-    V(m_pEffect->GetVariableByName("TexPreviousResult")->AsShaderResource()->SetResource(m_pPreResult));
 	
 	D3DXMATRIX mClip2Tex;
     mClip2Tex = D3DXMATRIX( 0.5,    0, 0,   0,
