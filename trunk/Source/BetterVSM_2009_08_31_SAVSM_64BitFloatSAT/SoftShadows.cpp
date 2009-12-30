@@ -337,7 +337,7 @@ bool CALLBACK ModifyDeviceSettings( DXUTDeviceSettings* pDeviceSettings, void* p
 void CALLBACK OnFrameMove( double fTime, float fElapsedTime, void* pUserContext )
 {
     // update the camera's position based on user input 
-	g_pCamManager->ActiveEye()->FrameMove(fElapsedTime);
+	g_pCamManager->OnFrameMove(fTime,fElapsedTime,pUserContext);
 
 	//light management
 	for( int light_idx = 0; light_idx < 1/*NUM_LIGHT*/; ++light_idx )//FIX A LIGHT FOR CONSTANT ILLUMINATION
@@ -378,7 +378,7 @@ LRESULT CALLBACK MsgProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bo
 
     if ( iTmp ) // left button pressed
     {
-		g_pCamManager->ActiveEye()->HandleMessages( hWnd, uMsg, wParam, lParam );
+		g_pCamManager->HandleMessages( hWnd, uMsg, wParam, lParam );
 	}
 	else{
 		//light management
@@ -398,7 +398,7 @@ void CALLBACK OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserCo
     if( !bKeyDown )	return;
 	if( g_SampleUI.GetCheckBox(IDC_BMOVECAMERA)->GetChecked() )
 	{
-		g_pCamManager->ActiveEye()->OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
+		g_pCamManager->OnKeyboard(nChar,bKeyDown, bAltDown, pUserContext);
 	}
 	else
 	{
@@ -1127,6 +1127,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 			p_RTV = g_pPingpongBuffer[1]->m_pRTView;
 			p_SRV = g_pPingpongBuffer[0]->m_pSRView;
 		}
+
 		g_NoShadow.set_parameters( para,p_RTV,p_SRV,&light_color[light_idx] );
 		g_NoShadow.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
