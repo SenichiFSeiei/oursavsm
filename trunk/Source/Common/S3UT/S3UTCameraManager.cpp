@@ -213,10 +213,14 @@ void S3UTCameraManager::SetupCameraUI( CDXUTDialog &camUI ) const
 	int charWidth = 5;
 	int textHeight = 22;
 	int colSpace = 10;
+	int fixItemCnt = 3;
 	D3DXCOLOR fontColor( 0.3f, 0.7f, 0.1f, 1.0f );
 
 	camUI.AddStatic(8, L"Light UI", 0, 0, 200, 22);
 	camUI.GetControl(8)->SetTextColor( fontColor );
+	
+	camUI.AddCheckBox( 9, L"Dump Camera Settings", 80, 22, 200, 22, false);
+	camUI.GetControl(9)->SetTextColor( fontColor );
 
 	int camIdx = 0;
 	vector<S3UTCamera *>::const_iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
@@ -228,22 +232,22 @@ void S3UTCameraManager::SetupCameraUI( CDXUTDialog &camUI ) const
 		TCHAR   lpszCamName[256];   
 		MultiByteToWideChar(CP_ACP,0,(*iter)->GetCamName().c_str(),len,lpszCamName,nwLen);   
 
-		camUI.AddStatic( HANDLE_BASE+camIdx, lpszCamName, textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+		camUI.AddStatic( HANDLE_BASE+camIdx, lpszCamName, textCursorX*charWidth, (camIdx+fixItemCnt)*textHeight, 200, 22 );
 		camUI.GetControl(HANDLE_BASE+camIdx)->SetTextColor( fontColor );
 
 		textCursorX += colSpace;
 
 		if( (*iter)->GetCamType() == S3UTCamera::eEye )
-			camUI.AddStatic( HANDLE_BASE+camIdx, L"Eye", textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+			camUI.AddStatic( HANDLE_BASE+camIdx, L"Eye", textCursorX*charWidth, (camIdx+fixItemCnt)*textHeight, 200, 22 );
 		else if( (*iter)->GetCamType() == S3UTCamera::eLight )
-			camUI.AddStatic( HANDLE_BASE+camIdx, L"Light", textCursorX*charWidth, (camIdx+1)*textHeight, 200, 22 );
+			camUI.AddStatic( HANDLE_BASE+camIdx, L"Light", textCursorX*charWidth, (camIdx+fixItemCnt)*textHeight, 200, 22 );
 		camUI.GetControl(HANDLE_BASE+camIdx)->SetTextColor( fontColor );
 
 		textCursorX += 3*colSpace;
-		camUI.AddCheckBox( HANDLE_BASE+CameraCount()+camIdx, L"Active", textCursorX*charWidth, (camIdx+1)*textHeight, 100, 22, (*iter)->IsActive());
+		camUI.AddCheckBox( HANDLE_BASE+CameraCount()+camIdx, L"Active", textCursorX*charWidth, (camIdx+fixItemCnt)*textHeight, 100, 22, (*iter)->IsActive());
 		
 		textCursorX += 2*colSpace;
-		camUI.AddCheckBox( HANDLE_BASE+2*CameraCount()+camIdx, L"Controllable", textCursorX*charWidth, (camIdx+1)*textHeight, 100, 22, (*iter)->IsControllable());
+		camUI.AddCheckBox( HANDLE_BASE+2*CameraCount()+camIdx, L"Controllable", textCursorX*charWidth, (camIdx+fixItemCnt)*textHeight, 100, 22, (*iter)->IsControllable());
 
 		++camIdx;
 	}
@@ -261,6 +265,38 @@ void S3UTCameraManager::SyncToCameraUI(CDXUTDialog &camUI)
 		(*iter)->SetActive( isActive );
 		(*iter)->SetControllable( isControllable );
 		++camIdx;
+	}
+	if( camUI.GetCheckBox( 9 )->GetChecked() )
+		DumpCameraStatus("DumpedCamStatus.txt");
+}
+
+void S3UTCameraManager::OnFrameMove( double fTime, float fElapsedTime, void* pUserContext )
+{
+	vector<S3UTCamera *>::iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		if((*iter)->IsControllable())
+			(*iter)->FrameMove( fElapsedTime );
+	}
+}
+
+void S3UTCameraManager::HandleMessages( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
+{
+	vector<S3UTCamera *>::iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		if((*iter)->IsControllable())
+			(*iter)->HandleMessages( hWnd, uMsg, wParam, lParam );
+	}
+}
+
+void S3UTCameraManager::OnKeyboard(UINT nChar, bool bKeyDown, bool bAltDown, void* pUserContext)
+{
+	vector<S3UTCamera *>::iterator iter = m_aPtrCameras.begin(), iter_end = m_aPtrCameras.end();
+	for(;iter!=iter_end;++iter)
+	{
+		if((*iter)->IsControllable())
+			(*iter)->OnKeyboard(nChar, bKeyDown, bAltDown, pUserContext);
 	}
 }
 
