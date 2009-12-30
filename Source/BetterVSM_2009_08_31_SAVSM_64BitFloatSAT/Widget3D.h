@@ -15,6 +15,7 @@
 #include <dxutgui.h>
 #include <dxutsettingsdlg.h>
 #include <sdkmisc.h>
+#include "SoftShadowMap.h" //so far only for showing shadow on near plane
 
 class S3UTCamera;
 
@@ -33,17 +34,23 @@ public:
 	void	OnD3D10DestroyDevice();
 	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov);
+	HRESULT    CreateShader(ID3D10Device *pDev10);
 	~Widget3D(){};
-
-    void SetLightSize( float light_size ){ m_fLightSize = light_size; }
+	
+	SSMap	*m_pSsmap;
+    
+	void SetLightSize( float light_size ){ m_fLightSize = light_size; }
     void SetLightZn( float light_zn ){ m_fCtrledLightZn = light_zn; }
     void SetLightZf( float light_zf ){ m_fCtrledLightZf = light_zf; }
     void SetLightFov( float light_fov ){ m_fCtrledLightFov = light_fov; }
 	void SetLightPos( D3DXVECTOR3 vLight ){ m_vLight = vLight; }
+
+	bool  m_bShaderChanged;
 private:
 	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
+	void	DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize );
 	void	DumpParameters();
 	void	ReadParameters();
 
