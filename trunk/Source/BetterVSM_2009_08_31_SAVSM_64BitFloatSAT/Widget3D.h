@@ -33,7 +33,6 @@ public:
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
 	void	OnD3D10DestroyDevice();
 	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
-	void	ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov);
 	HRESULT    CreateShader(ID3D10Device *pDev10);
 	~Widget3D(){};
 	
@@ -51,8 +50,6 @@ private:
 	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
 	void	DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize );
-	void	DumpParameters();
-	void	ReadParameters();
 
 	ID3D10Effect				*m_pEffect;
 	ID3D10RasterizerState		*m_pRenderState;

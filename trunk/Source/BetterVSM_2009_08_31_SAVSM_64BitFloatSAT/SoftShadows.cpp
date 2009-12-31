@@ -39,6 +39,7 @@ static S3UTCamera g_LCamera[NUM_LIGHT];
 static S3UTCameraManager *g_pCamManager;
 
 static Widget3D g_Widget;
+static BlendingUtility g_Blender;
 
 static CD3DSettingsDlg g_D3DSettingsDlg;
 static CDXUTDialogResourceManager g_DialogResourceManager;
@@ -166,9 +167,6 @@ static void LoadNewModel(bool bNeedUI = false)
         }
         D3DXVECTOR3 vLight[NUM_LIGHT]		= LIGHT_POS;
         D3DXVECTOR3 vLookAt		= LOOK_AT_POS;
-		//--
-		g_Widget.ProvideParameters( vLight[0], g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
-		//--
 
 		//light management
 		for( int light_idx = 0; light_idx < NUM_LIGHT; ++light_idx )
@@ -455,7 +453,6 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
         g_D3DSettingsDlg.SetActive( !g_D3DSettingsDlg.IsActive() );
         break;
     case IDC_LIGHT_SIZE:
-        g_Widget.SetLightSize((float)g_SampleUI.GetSlider(IDC_LIGHT_SIZE)->GetValue() / 100.0 );
         break;
     case IDC_SHADOW_ALGORITHM:
         OldShadowAlgorithm = ShadowAlgorithm;
@@ -587,6 +584,7 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 	ssmap.OnD3D10CreateDevice(pDev10,pBackBufferSurfaceDesc,pUserContext);
 
 	g_Widget.OnD3D10CreateDevice( pDev10,pBackBufferSurfaceDesc,pUserContext );
+	g_Blender.OnD3D10CreateDevice( pDev10,pBackBufferSurfaceDesc,pUserContext );
 
     V_RETURN(D3DX10CreateSprite(pDev10, 512, &g_pSprite10));
 	{//must be after g_ABP create a device,because they uses the members of g_ABP
@@ -926,7 +924,6 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	//light pos is not modified here. this light pos stored in 3DWidget is only synced with light camera after rendering of the light
 	//if you try to modify light pos here, light would be freezed, of course, this is a bug introduced by bad design
 	D3DXVECTOR3 vTmp;
-	g_Widget.ProvideParameters( vTmp, g_fFilterSize, g_fCtrledLightZn, g_fCtrledLightZf, g_fCtrledLightFov );
 
 	// render GBuffer
 	pDev10->OMSetDepthStencilState(g_pDSState,0);
@@ -934,113 +931,134 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 									g_MeshScene, g_CameraRef, 
 									pDev10, fTime, fElapsedTime, pUserContext );
 	
-	for( int light_idx = 0; light_idx < 1; ++light_idx )
+	g_Blender.OriginalSampleMask = 0;
+	pDev10->OMGetBlendState( &g_Blender.pOriginalBlendState, g_Blender.OriginalBlendFactor, &g_Blender.OriginalSampleMask );
+
+	float BlendBufferClearColor[4] = { 1, 1, 1, 1 };
+	pDev10->ClearRenderTargetView(g_pBlendBuffer->m_pRTView, BlendBufferClearColor);
+	bool isFirstPass = true;
+	for( int cam_idx = 0; cam_idx < g_pCamManager->CameraCount(); ++cam_idx )
 	{
 	// rendering a subdivided light
-		float scaled_half_light_size = (g_fFilterSize*LIGHT_SCALE_FACTOR);
-		float fStartPt = -scaled_half_light_size;
-		float fInterval = 2 * scaled_half_light_size / g_nNumLightSample;
-		float fSubLightSize = g_fFilterSize;
-		if( g_nNumLightSample > 0 )
+		if( g_pCamManager->Camera(cam_idx)->GetCamType() == S3UTCamera::eLight&&
+			g_pCamManager->Camera(cam_idx)->IsActive() )
 		{
-			fSubLightSize = fSubLightSize / g_nNumLightSample;
-		}
-		if( g_nNumLightSample == 0 )
-		{
-			g_nNumLightSample = 1;
-		}
-
-		static float total_light_x_incre = 0;
-		static int light_mov_dir = 0;
-		float shadow_factor = 0.8/(g_nNumLightSample * g_nNumLightSample);
-		for( int ix = 0; ix < g_nNumLightSample; ++ix )
-		{
-			for( int iy = 0; iy < g_nNumLightSample; ++iy )
+			float scaled_half_light_size = (g_pCamManager->Camera(cam_idx)->GetLightSize()*LIGHT_SCALE_FACTOR);
+			float fStartPt = -scaled_half_light_size;
+			float fInterval = 2 * scaled_half_light_size / g_nNumLightSample;
+			float fSubLightSize = g_pCamManager->Camera(cam_idx)->GetLightSize();
+			if( g_nNumLightSample > 0 )
 			{
-				D3DXVECTOR3 vLight = *g_LCamera[0].GetEyePt();
+				fSubLightSize = fSubLightSize / g_nNumLightSample;
+			}
+			if( g_nNumLightSample == 0 )
+			{
+				g_nNumLightSample = 1;
+			}
 
-				S3UTCamera  local_cam = g_LCamera[0];
-
-				D3DXVECTOR3 vTrans( fStartPt+(ix+0.5)*fInterval,fStartPt+(iy+0.5)*fInterval,0 );
-				if( g_nNumLightSample == 1 )
+			static float total_light_x_incre = 0;
+			static int light_mov_dir = 0;
+			float shadow_factor = 0.8/(g_nNumLightSample * g_nNumLightSample);
+			for( int ix = 0; ix < g_nNumLightSample; ++ix )
+			{
+				for( int iy = 0; iy < g_nNumLightSample; ++iy )
 				{
-					vTrans = D3DXVECTOR3(0,0,0);
+					D3DXVECTOR3 vLight = *g_pCamManager->Camera(cam_idx)->GetEyePt();
+
+					S3UTCamera  local_cam = *g_pCamManager->Camera(cam_idx);
+
+					D3DXVECTOR3 vTrans( fStartPt+(ix+0.5)*fInterval,fStartPt+(iy+0.5)*fInterval,0 );
+					if( g_nNumLightSample == 1 )
+					{
+						vTrans = D3DXVECTOR3(0,0,0);
+					}
+					D3DXMATRIX mInvLightView;
+					D3DXVECTOR4 tmp_light_pos;
+					D3DXMatrixInverse(&mInvLightView, NULL, local_cam.GetViewMatrix());
+					D3DXVec3Transform(&tmp_light_pos, &vTrans, &mInvLightView );
+					D3DXVECTOR3 tmp_light_pos_3(tmp_light_pos.x,tmp_light_pos.y,tmp_light_pos.z);
+					local_cam.SetViewParams( &tmp_light_pos_3, &vLookAt );
+					
+					g_MeshScene.set_parameters( render_ogre, render_scene, render_fan, false );
+					D3DXMATRIX mLightView;
+					// here we compute light viewprojection so that light oversees the whole scene
+					D3DXMATRIX mTranslate;
+
+					D3DXMatrixInverse(&mTranslate, NULL, local_cam.GetWorldMatrix());
+					D3DXMatrixMultiply(&mLightView, &mTranslate, local_cam.GetViewMatrix());
+			
+					unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BDUMP_SHADOWMAP)->GetChecked();
+					ssmap.Render(pDev10, &g_MeshScene, local_cam,fTime,fElapsedTime,iTmp);
+					
+					pDev10->RSSetState(g_pRenderState);
+
+					p_RTV = g_pBlendBuffer->m_pRTView;
+			
+					float NewBlendFactor[4] = {0,0,0,0};
+
+					//alpha blending initial;
+					if( isFirstPass )
+					{		
+						isFirstPass = false;
+						pDev10->OMSetBlendState( g_Blender.m_pSceneBlendStateInitial, NewBlendFactor, 0xffffffff );					
+					}		
+					else
+					{
+						pDev10->OMSetBlendState( g_Blender.m_pSceneBlendStateOn, NewBlendFactor, 0xffffffff );											
+					}
+					if( ShadowAlgorithm == BP_GI )
+					{
+						V(g_BPGI.m_pEffect->GetVariableByName("g_fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_BPGI.set_parameters( para,p_RTV,&light_color[0] );
+						g_BPGI.set_input_buffer( &g_GBuffer );
+						g_BPGI.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					else if( ShadowAlgorithm == STANDARD_BP )
+					{
+						V(g_ABP.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_ABP.set_parameters( para,p_RTV,&light_color[0] );
+						g_ABP.set_input_buffer( &g_GBuffer );
+						g_ABP.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					else if( ShadowAlgorithm == BP_MSSM_KERNEL )
+					{
+						V(g_BPMSSMKernel.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_BPMSSMKernel.set_parameters( para,p_RTV,&light_color[0] );
+						g_BPMSSMKernel.set_input_buffer( &g_GBuffer );
+						g_BPMSSMKernel.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					else if( ShadowAlgorithm == STD_VSM )
+					{
+						V(g_StdVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_StdVSM.set_bias( g_fDefaultDepthBias,g_f3rdDepthDelta, g_f1stDepthDelta );
+						g_StdVSM.set_parameters( para,p_RTV,&light_color[0] );
+						g_StdVSM.set_input_buffer( &g_GBuffer );
+						g_StdVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					else if( ShadowAlgorithm == MIP_VSM )
+					{
+						V(g_MipVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_MipVSM.set_parameters( para,p_RTV,&light_color[0] );
+						g_MipVSM.set_input_buffer( &g_GBuffer );
+						g_MipVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					else if( ShadowAlgorithm == STD_PCSS )
+					{
+						V(g_PCSS.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
+
+						g_PCSS.set_parameters( para,p_RTV,&light_color[0] );
+						g_PCSS.set_input_buffer( &g_GBuffer );
+						g_PCSS.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,local_cam,pDev10,fTime,fElapsedTime,pUserContext);
+					}
+					//alpha blending restore			
+					pDev10->OMSetBlendState( g_Blender.pOriginalBlendState, g_Blender.OriginalBlendFactor, g_Blender.OriginalSampleMask );
+
 				}
-				D3DXMATRIX mInvLightView;
-				D3DXVECTOR4 tmp_light_pos;
-				D3DXMatrixInverse(&mInvLightView, NULL, local_cam.GetViewMatrix());
-				D3DXVec3Transform(&tmp_light_pos, &vTrans, &mInvLightView );
-				D3DXVECTOR3 tmp_light_pos_3(tmp_light_pos.x,tmp_light_pos.y,tmp_light_pos.z);
-				local_cam.SetViewParams( &tmp_light_pos_3, &vLookAt );
-				
-				g_MeshScene.set_parameters( render_ogre, render_scene, render_fan, false );
-				S3UTCamera& g_LCameraRef = local_cam;
-				D3DXMATRIX mLightView;
-				// here we compute light viewprojection so that light oversees the whole scene
-				D3DXMATRIX mTranslate;
-
-				D3DXMatrixInverse(&mTranslate, NULL, g_LCameraRef.GetWorldMatrix());
-				D3DXMatrixMultiply(&mLightView, &mTranslate, g_LCameraRef.GetViewMatrix());
-				g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
-		
-				unsigned iTmp = g_SampleUI.GetCheckBox(IDC_BDUMP_SHADOWMAP)->GetChecked();
-				ssmap.Render(pDev10, &g_MeshScene, g_LCameraRef,fTime,fElapsedTime,iTmp);
-				
-				pDev10->RSSetState(g_pRenderState);
-
-				p_RTV = g_pBlendBuffer->m_pRTView;
-
-				if( ShadowAlgorithm == BP_GI )
-				{
-					V(g_BPGI.m_pEffect->GetVariableByName("g_fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_BPGI.set_parameters( para,p_RTV,&light_color[0] );
-					g_BPGI.set_input_buffer( &g_GBuffer );
-					g_BPGI.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-				else if( ShadowAlgorithm == STANDARD_BP )
-				{
-					V(g_ABP.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_ABP.set_parameters( para,p_RTV,&light_color[0] );
-					g_ABP.set_input_buffer( &g_GBuffer );
-					g_ABP.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-				else if( ShadowAlgorithm == BP_MSSM_KERNEL )
-				{
-					V(g_BPMSSMKernel.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_BPMSSMKernel.set_parameters( para,p_RTV,&light_color[0] );
-					g_BPMSSMKernel.set_input_buffer( &g_GBuffer );
-					g_BPMSSMKernel.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-				else if( ShadowAlgorithm == STD_VSM )
-				{
-					V(g_StdVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_StdVSM.set_bias( g_fDefaultDepthBias,g_f3rdDepthDelta, g_f1stDepthDelta );
-					g_StdVSM.set_parameters( para,p_RTV,&light_color[0] );
-					g_StdVSM.set_input_buffer( &g_GBuffer );
-					g_StdVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-				else if( ShadowAlgorithm == MIP_VSM )
-				{
-					V(g_MipVSM.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_MipVSM.set_parameters( para,p_RTV,&light_color[0] );
-					g_MipVSM.set_input_buffer( &g_GBuffer );
-					g_MipVSM.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-				else if( ShadowAlgorithm == STD_PCSS )
-				{
-					V(g_PCSS.m_pEffect->GetVariableByName("fLumiFactor")->AsScalar()->SetFloat( shadow_factor ));
-
-					g_PCSS.set_parameters( para,p_RTV,&light_color[0] );
-					g_PCSS.set_input_buffer( &g_GBuffer );
-					g_PCSS.OnD3D10FrameRender(render_ogre,render_scene,g_SampleUI,g_MeshScene,fSubLightSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
-				}
-
-
 			}
 		}
 	}
@@ -1156,6 +1174,7 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
     g_pSkyBox->OnDestroyDevice();
 	SAFE_DELETE(g_pSkyBox);
 	g_Widget.OnD3D10DestroyDevice();
+	g_Blender.OnD3D10DestroyDevice(pUserContext);
 	//g_pEnvMap->OnDestroyDevice();
 	//SAFE_DELETE(g_pEnvMap);
 }

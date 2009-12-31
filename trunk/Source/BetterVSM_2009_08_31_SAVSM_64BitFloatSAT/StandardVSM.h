@@ -232,8 +232,9 @@ void StdVSM::OnD3D10FrameRender(bool render_ogre,
 	
 //releasing issue
 	pDev10->OMSetRenderTargets(1,&m_pRTV,NULL);
-	float ClearColor[4] = { 1, 1, 1, 1 };
-	pDev10->ClearRenderTargetView(m_pRTV, ClearColor);
+	//in an alpha blending framework, clear is not allowed here
+	//float ClearColor[4] = { 1, 1, 1, 1 };
+	//pDev10->ClearRenderTargetView(m_pRTV, ClearColor);
 
 	m_pShadowResult->SetUseMyRT(false);
 	m_pShadowResult->OnD3D10FrameRender( m_pEffect,m_pEffect->GetTechniqueByName("SSMBackprojection"),
