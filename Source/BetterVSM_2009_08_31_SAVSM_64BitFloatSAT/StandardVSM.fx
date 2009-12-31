@@ -517,7 +517,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	[branch]if( pixel_linear_z - 0.06 < min_depth ) // completely lit
 		return float4(0,0,1,1);
 	[branch]if( pixel_linear_z - 0.03 * (max_depth-min_depth) > max_depth ) // completely dark
-		return float4(1,0,0,1);
+		return float4(1,1,0,1);
 	
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 2;
@@ -584,13 +584,11 @@ float4 SSMBackprojectionPS(QuadVS_Output Input) : SV_Target0
 	
 	float4 ret_color;
 	[flatten]if( 0 == diff_coe )
-		ret_color = float4(1,0,0,1);
+		ret_color = float4(1,1,0,1);
 	else
 		ret_color = AccurateShadowIntSATMultiSMP4(Input.Pos,float4(1,1,1,1),true);
 			
 	float4 curr_result = phong_shading(vLightPos.xyz,VCameraInLight.xyz,surfNorm,SkinSpecCoe,diff,ret_color,spec_clr_ogre);
-	//float4 pre_result = TexPreviousResult.Load( int3( Input.Pos.x - 0.5, Input.Pos.y - 0.5, 0 ) );
-	//return pre_result + curr_result  * fLumiFactor;
 	return curr_result;
 }
 

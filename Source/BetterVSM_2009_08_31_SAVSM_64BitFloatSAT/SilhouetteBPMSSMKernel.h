@@ -204,6 +204,7 @@ void SilhouetteBPMSSMKernel::OnD3D10FrameRender(bool render_ogre,
 
 
 	pDev10->OMSetRenderTargets(1,&m_pRTV,NULL);
+	//in an alpha blending framework, clear is not allowed here
 	float ClearColor[4] = { 1, 1, 1, 1 };
 	pDev10->ClearRenderTargetView(m_pRTV, ClearColor);
 

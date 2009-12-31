@@ -26,7 +26,6 @@ HRESULT Widget3D::CreateShader(ID3D10Device *pDev10)
 HRESULT Widget3D::OnD3D10CreateDevice( ID3D10Device* pDev10, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext )
 {
 	CreateShader( pDev10 );
-	ReadParameters();
 	return S_OK;
 
 }
@@ -484,38 +483,4 @@ void Widget3D::OnD3D10DestroyDevice()
 	SAFE_RELEASE(m_pEffect);
 }
 
-void Widget3D::DumpParameters()
-{
-	FILE *fp = fopen("SceneParameters.txt","w");
-
-	fprintf( fp, "%f %f %f\n", m_vLight.x,m_vLight.y,m_vLight.z );
-	fprintf( fp, "%f\n", m_fLightSize );
-	fprintf( fp, "%f\n",m_fCtrledLightZn );
-	fprintf( fp, "%f\n",m_fCtrledLightZf );
-	fprintf( fp, "%f\n",m_fCtrledLightFov );
-
-	fclose( fp );
-}
-
-void Widget3D::ReadParameters()
-{
-	
-	FILE *fp = fopen("SceneParameters.txt","r");
-	
-	fscanf( fp, "%f %f %f\n", &m_vLight.x,&m_vLight.y,&m_vLight.z );
-	fscanf( fp, "%f\n", &m_fLightSize );
-	fscanf( fp, "%f\n", &m_fCtrledLightZn );
-	fscanf( fp, "%f\n", &m_fCtrledLightZf );
-	fscanf( fp, "%f\n", &m_fCtrledLightFov );
-	fclose( fp );
-}
-
-void Widget3D::ProvideParameters( D3DXVECTOR3& vLight, float &fLightSize, float &fCtrledLightZn, float &fCtrledLightZf, float &fCtrledLightFov)
-{
-	vLight = m_vLight;
-	fLightSize = m_fLightSize;
-	fCtrledLightZn   = m_fCtrledLightZn; 
-	fCtrledLightZf   = m_fCtrledLightZf; 
-	fCtrledLightFov  = m_fCtrledLightFov;
-}
 
