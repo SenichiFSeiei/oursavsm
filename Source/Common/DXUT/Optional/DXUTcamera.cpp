@@ -255,6 +255,66 @@ CBaseCamera::CBaseCamera()
     m_bResetCursorAfterMove = false;
 }
 
+CBaseCamera &CBaseCamera::operator=( const CBaseCamera &parCam )
+{
+	if( this == &parCam ) return *this;
+    m_mView = parCam.m_mView;              // View matrix 
+    m_mProj = parCam.m_mProj;              // Projection matrix
+
+	memcpy( m_GamePad,parCam.m_GamePad,sizeof(m_GamePad));
+	m_vGamePadLeftThumb = parCam.m_vGamePadLeftThumb;
+	m_vGamePadRightThumb = parCam.m_vGamePadRightThumb;
+
+	memcpy( m_GamePadLastActive,parCam.m_GamePadLastActive,sizeof(m_GamePadLastActive) );
+
+	m_cKeysDown = parCam.m_cKeysDown;            // Number of camera keys that are down.
+    
+	memcpy( m_aKeys,parCam.m_aKeys,sizeof(m_aKeys));
+
+	m_vKeyboardDirection = parCam.m_vKeyboardDirection;   // Direction vector of keyboard input
+	m_ptLastMousePosition = parCam.m_ptLastMousePosition;  // Last absolute position of mouse cursor
+	m_bMouseLButtonDown = parCam.m_bMouseLButtonDown;    // True if left button is down 
+	m_bMouseMButtonDown = parCam.m_bMouseMButtonDown;    // True if middle button is down 
+	m_bMouseRButtonDown = parCam.m_bMouseRButtonDown;    // True if right button is down 
+    m_nCurrentButtonMask = parCam.m_nCurrentButtonMask;   // mask of which buttons are down
+	m_nMouseWheelDelta = parCam.m_nMouseWheelDelta;     // Amount of middle wheel scroll (+/-) 
+	m_vMouseDelta = parCam.m_vMouseDelta;          // Mouse relative delta smoothed over a few frames
+	m_fFramesToSmoothMouseData = parCam.m_fFramesToSmoothMouseData; // Number of frames to smooth mouse data over
+
+	m_vDefaultEye = parCam.m_vDefaultEye;          // Default camera eye position
+	m_vDefaultLookAt = parCam.m_vDefaultLookAt;       // Default LookAt position
+	m_vEye = parCam.m_vEye;                 // Camera eye position
+	m_vLookAt = parCam.m_vLookAt;              // LookAt position
+	m_fCameraYawAngle = parCam.m_fCameraYawAngle;      // Yaw angle of camera
+	m_fCameraPitchAngle = parCam.m_fCameraPitchAngle;    // Pitch angle of camera
+
+	m_rcDrag = parCam.m_rcDrag;               // Rectangle within which a drag can be initiated.
+	m_vVelocity = parCam.m_vVelocity;            // Velocity of camera
+	m_bMovementDrag = parCam.m_bMovementDrag;        // If true, then camera movement will slow to a stop otherwise movement is instant
+	m_vVelocityDrag = parCam.m_vVelocityDrag;        // Velocity drag force
+	m_fDragTimer = parCam.m_fDragTimer;           // Countdown timer to apply drag
+	m_fTotalDragTimeToZero = parCam.m_fTotalDragTimeToZero; // Time it takes for velocity to go from full to 0
+	m_vRotVelocity = parCam.m_vRotVelocity;         // Velocity of camera
+
+	m_fFOV = parCam.m_fFOV;                 // Field of view
+	m_fAspect = parCam.m_fAspect;              // Aspect ratio
+	m_fNearPlane = parCam.m_fNearPlane;           // Near plane
+	m_fFarPlane = parCam.m_fFarPlane;            // Far plane
+
+	m_fRotationScaler = parCam.m_fRotationScaler;      // Scaler for rotation
+	m_fMoveScaler = parCam.m_fMoveScaler;          // Scaler for movement
+
+	m_bInvertPitch = parCam.m_bInvertPitch;         // Invert the pitch axis
+	m_bEnablePositionMovement = parCam.m_bEnablePositionMovement; // If true, then the user can translate the camera/model 
+	m_bEnableYAxisMovement = parCam.m_bEnableYAxisMovement; // If true, then camera can move in the y-axis
+
+	m_bClipToBoundary = parCam.m_bClipToBoundary;      // If true, then the camera will be clipped to the boundary
+	m_vMinBoundary = parCam.m_vMinBoundary;         // Min point in clip boundary
+	m_vMaxBoundary = parCam.m_vMaxBoundary;         // Max point in clip boundary
+
+	m_bResetCursorAfterMove = parCam.m_bResetCursorAfterMove;// If true, the class will reset the cursor position so that the cursor always has space to move 
+	return *this;
+}
 
 //--------------------------------------------------------------------------------------
 // Client can call this to change the position and direction of camera
@@ -783,6 +843,7 @@ void CFirstPersonCamera::SetRotateButtons( bool bLeft, bool bMiddle, bool bRight
 //--------------------------------------------------------------------------------------
 CModelViewerCamera::CModelViewerCamera()
 {
+	CBaseCamera::operator =( *this );
     D3DXMatrixIdentity( &m_mWorld );
     D3DXMatrixIdentity( &m_mModelRot );
     D3DXMatrixIdentity( &m_mModelLastRot );    
@@ -802,6 +863,31 @@ CModelViewerCamera::CModelViewerCamera()
     m_bDragSinceLastUpdate    = true;
 }
 
+CModelViewerCamera &CModelViewerCamera::operator=( const CModelViewerCamera &parCam )
+{
+	if( this == &parCam ) return *this;
+	m_WorldArcBall = parCam.m_WorldArcBall;
+	m_ViewArcBall = parCam.m_ViewArcBall;
+	m_vModelCenter = parCam.m_vModelCenter;
+	m_mModelLastRot = parCam.m_mModelLastRot;        // Last arcball rotation matrix for model 
+	m_mModelRot = parCam.m_mModelRot;            // Rotation matrix of model
+	m_mWorld = parCam.m_mWorld;               // World matrix of model
+
+	m_nRotateModelButtonMask = parCam.m_nRotateCameraButtonMask;
+	m_nZoomButtonMask = parCam.m_nZoomButtonMask;
+	m_nRotateCameraButtonMask = parCam.m_nRotateCameraButtonMask;
+
+	m_bAttachCameraToModel = parCam.m_bAttachCameraToModel;
+	m_bLimitPitch = parCam.m_bLimitPitch;
+	m_fRadius = parCam.m_fRadius;              // Distance from the camera to model 
+	m_fDefaultRadius = parCam.m_fDefaultRadius;       // Distance from the camera to model 
+	m_fMinRadius = parCam.m_fMinRadius;           // Min radius
+	m_fMaxRadius = parCam.m_fMaxRadius;           // Max radius
+	m_bDragSinceLastUpdate = parCam.m_bDragSinceLastUpdate; // True if mouse drag has happened since last time FrameMove is called.
+
+	m_mCameraRotLast = parCam.m_mCameraRotLast;
+	return *this;
+}
 
 
 
