@@ -20,6 +20,18 @@
 #include <dxut.h>
 #include <S3UTcamera.h>
 
+S3UTCamera &S3UTCamera::operator=( const S3UTCamera &parCam )
+{
+	if( this == &parCam ) return *this;
+	CModelViewerCamera::operator=(*this);
+	m_eCamType = parCam.m_eCamType;
+	m_sName = parCam.m_sName;
+	m_bIsActive = parCam.m_bIsActive;
+	m_bIsControllable = parCam.m_bIsControllable;
+	m_bCastShadow = parCam.m_bCastShadow;
+	m_fLightSize = parCam.m_fLightSize;
+	return *this;
+}
 void S3UTCamera::SetProjParams(FLOAT fFOV, FLOAT fAspect, D3DXMATRIX mView, D3DXVECTOR3 vBBox[2])
 {
     D3DXMATRIX mViewInv;
