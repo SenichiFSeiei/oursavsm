@@ -112,7 +112,7 @@ static  float g_fDepthBiasObject0			= 0.00225;
 //light management
 static RenderObject *g_pLightLumiBuffer[NUM_LIGHT];
 static RenderObject *g_pBlendBuffer;
-
+static RenderObject *g_pWidgetBuffer;
 //----------------------------------------------------------
 
 //--------------------------------------------------------------------------------------
@@ -459,13 +459,13 @@ void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, vo
         ShadowAlgorithm = ((CDXUTComboBox*)pControl)->GetSelectedIndex();
         break;
 	case IDC_LIGHT_ZN:
-        g_Widget.SetLightZn( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/2 );
+        //g_Widget.SetLightZn( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZN)->GetValue()/2 );
 		break;
 	case IDC_LIGHT_ZF:
-        g_Widget.SetLightZf( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+30 );
+        //g_Widget.SetLightZf( (float)g_SampleUI.GetSlider(IDC_LIGHT_ZF)->GetValue()+30 );
 		break;
 	case IDC_LIGHT_FOV:
-        g_Widget.SetLightFov((float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/10);
+        //g_Widget.SetLightFov((float)g_SampleUI.GetSlider(IDC_LIGHT_FOV)->GetValue()/10);
 		break;
 	case IDC_fDefaultDepthBias:
 		g_fDefaultDepthBias = (float)g_SampleUI.GetSlider(IDC_fDefaultDepthBias)->GetValue()/100;
@@ -651,6 +651,8 @@ HRESULT CALLBACK OnD3D10CreateDevice(ID3D10Device* pDev10, const DXGI_SURFACE_DE
 
 		g_pBlendBuffer = new RenderObject( "RenderScreenPixelPos" );
 		g_pBlendBuffer->OnD3D10CreateDevice( NULL,pDev10, pBackBufferSurfaceDesc, pUserContext);
+		g_pWidgetBuffer = new RenderObject( "RenderScreenPixelPos" );//fake tech name,we dont want to use it. We only want to utilize its buffers
+		g_pWidgetBuffer->OnD3D10CreateDevice( NULL,pDev10, pBackBufferSurfaceDesc, pUserContext);
 //--------------------------------------------------------------------------------------------------------
 
     return S_OK;
@@ -734,6 +736,7 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 	}
 	
 	g_pBlendBuffer->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
+	g_pWidgetBuffer->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
     
 	ssmap.OnWindowResize();
 	g_ScrQuadRender.OnD3D10SwapChainResized(rtDesc_scrpos,pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext);
@@ -900,11 +903,12 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 
 	pDev10->ClearRenderTargetView(g_pBlendBuffer->m_pRTView, ClearColor);
 
+	//use alpha val 1 to represent untouched pixels
+	pDev10->ClearRenderTargetView(g_pWidgetBuffer->m_pRTView, ClearColor);
+
 	//light management
 	ID3D10RenderTargetView *p_RTV;
 	ID3D10ShaderResourceView *p_SRV;
-
-    D3DXVECTOR3 vLookAt		= LOOK_AT_POS;
 
 	static float light_scale_factor = 0.2;
 	static float ls_incre = 0.04;
@@ -934,8 +938,7 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	g_Blender.OriginalSampleMask = 0;
 	pDev10->OMGetBlendState( &g_Blender.pOriginalBlendState, g_Blender.OriginalBlendFactor, &g_Blender.OriginalSampleMask );
 
-	float BlendBufferClearColor[4] = { 1, 1, 1, 1 };
-	pDev10->ClearRenderTargetView(g_pBlendBuffer->m_pRTView, BlendBufferClearColor);
+	float BlendBufferClearColor[4] = { 1, 1, 0, 1 };
 	bool isFirstPass = true;
 	for( int cam_idx = 0; cam_idx < g_pCamManager->CameraCount(); ++cam_idx )
 	{
@@ -977,6 +980,8 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 					D3DXMatrixInverse(&mInvLightView, NULL, local_cam.GetViewMatrix());
 					D3DXVec3Transform(&tmp_light_pos, &vTrans, &mInvLightView );
 					D3DXVECTOR3 tmp_light_pos_3(tmp_light_pos.x,tmp_light_pos.y,tmp_light_pos.z);
+					D3DXVECTOR3 vLookAt = *local_cam.GetLookAtPt();
+
 					local_cam.SetViewParams( &tmp_light_pos_3, &vLookAt );
 					
 					g_MeshScene.set_parameters( render_ogre, render_scene, render_fan, false );
@@ -1057,9 +1062,19 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 					}
 					//alpha blending restore			
 					pDev10->OMSetBlendState( g_Blender.pOriginalBlendState, g_Blender.OriginalBlendFactor, g_Blender.OriginalSampleMask );
-
+					if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
+					{
+						if( g_pCamManager->Camera(cam_idx)->GetCamType() == S3UTCamera::eLight&&
+							g_pCamManager->Camera(cam_idx)->IsActive() )
+						{
+							pDev10->OMSetRenderTargets(1, &(g_pWidgetBuffer->m_pRTView), g_GBuffer.m_pDepthBuffer->m_pDSView);
+							g_Widget.m_pSsmap = &ssmap;
+							g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,local_cam);
+						}
+					}
 				}
 			}
+
 		}
 	}
 	//-----------------------------------------------------------------------------------
@@ -1070,23 +1085,32 @@ void CALLBACK OnD3D10FrameRender(ID3D10Device* pDev10, double fTime, float fElap
 	D3DXMatrixMultiply( &mMatrixScaleWVP, &mMatrixScale, &mWorldViewProj );
 	ID3D10RenderTargetView* pOrigRTV = DXUTGetD3D10RenderTargetView();
 	pDev10->OMSetRenderTargets(1,&pOrigRTV,NULL);
-
+	
+	float FinalClearColor[4] = { 1, 0, 0, 1 };
+	pDev10->ClearRenderTargetView(pOrigRTV, FinalClearColor);
+	
 	g_MeshScene.set_parameters( render_ogre,render_scene, render_fan );
-	g_Final.set_parameters( para, pOrigRTV, NULL, g_pBlendBuffer->m_pSRView );
+	g_Final.set_parameters( para, pOrigRTV, NULL, g_pBlendBuffer->m_pSRView, g_pWidgetBuffer->m_pSRView );
 	S3UTCamera& g_LCameraRef = g_LCamera[0];
-	//temporary code for test driving FullRTQuadRender
-	//g_Final.m_pGBuffer = &g_GBuffer;
 	g_Final.set_input_buffer( &g_GBuffer );
 	g_pSkyBox->OnFrameRender( mMatrixScaleWVP );
 	g_Final.OnD3D10FrameRender(g_SampleUI,g_MeshScene,g_fFilterSize,ssmap,g_CameraRef,g_LCameraRef,pDev10,fTime,fElapsedTime,pUserContext);
 
 	g_LCameraRef.SetProjParams(g_fCtrledLightFov, 1.0, g_fCtrledLightZn, g_fCtrledLightZf);
 	
-	if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
-	{
-		g_Widget.m_pSsmap = &ssmap;
-		g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,g_LCameraRef,g_fFilterSize);
-	}
+	//if( g_SampleUI.GetCheckBox( IDC_SHOW_3DWIDGET )->GetChecked() )
+	//{
+	//		for( int cam_idx = 0; cam_idx < g_pCamManager->CameraCount(); ++cam_idx )
+	//		{
+	//		// rendering a subdivided light
+	//			if( g_pCamManager->Camera(cam_idx)->GetCamType() == S3UTCamera::eLight&&
+	//				g_pCamManager->Camera(cam_idx)->IsActive() )
+	//			{
+	//				g_Widget.m_pSsmap = &ssmap;
+	//				g_Widget.OnD3D10FrameRender(pDev10,g_CameraRef,*(g_pCamManager->Camera(cam_idx)));
+	//			}
+	//		}
+	//}
 
     // render UI
     if (g_bShowUI)
@@ -1125,6 +1149,7 @@ void CALLBACK OnD3D10SwapChainReleasing( void* pUserContext )
 	}
 	
 	g_pBlendBuffer->OnD3D10SwapChainReleasing(pUserContext);
+	g_pWidgetBuffer->OnD3D10SwapChainReleasing(pUserContext);
 
 	g_ScrQuadRender.OnD3D10SwapChainReleasing(pUserContext);
 	g_GBuffer.OnD3D10SwapChainReleasing(pUserContext);
@@ -1158,6 +1183,9 @@ void CALLBACK OnD3D10DestroyDevice( void* pUserContext )
 
 	g_pBlendBuffer->OnD3D10DestroyDevice();
 	SAFE_DELETE(g_pBlendBuffer);
+	
+	g_pWidgetBuffer->OnD3D10DestroyDevice();
+	SAFE_DELETE(g_pWidgetBuffer);
 
 	g_ABP.OnD3D10DestroyDevice();
 	g_NoShadow.OnD3D10DestroyDevice();

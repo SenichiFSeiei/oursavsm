@@ -117,6 +117,8 @@ void RenderFinal::OnD3D10FrameRender(CDXUTDialog &g_SampleUI,S3UTMesh &g_MeshSce
 	pDev10->OMSetRenderTargets(1,&m_pRTV,DXUTGetD3D10DepthStencilView());
 	pDev10->ClearDepthStencilView(DXUTGetD3D10DepthStencilView(), D3D10_CLEAR_DEPTH, 1.0, 0);
 	V(m_pEffect->GetVariableByName("TexFinalResult")->AsShaderResource()->SetResource( m_pSRV ));
+	V(m_pEffect->GetVariableByName("WidgetResult")->AsShaderResource()->SetResource( m_pSRV2 ));
+
 	V(m_pEffect->GetVariableByName("TexPosInWorld")->AsShaderResource()->SetResource( m_pInputBuffer->m_pInputAttributes->m_pSRView0));
 
 

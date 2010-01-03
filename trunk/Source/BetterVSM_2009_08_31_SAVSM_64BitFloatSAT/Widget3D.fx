@@ -39,7 +39,7 @@ VS_OUT1 RenderLightVS(VS_IN invert)
 
 float4 RenderLightPS(VS_OUT1 infragm) : SV_Target0
 {
-    return float4(0.8,0.8,0.0,1);
+    return float4(0.8,0.8,0.0,0);
 }
 
 VS_OUT1 RenderNearPlaneVS(VS_IN invert)
@@ -59,25 +59,25 @@ float4 RenderNearPlanePS(VS_OUT1 infragm) : SV_Target0
 
 	float2 ShadowTexC = { (infragm.vPosLightSpace.x+g_fNearPlaneWidth/2)/g_fNearPlaneWidth,1-(infragm.vPosLightSpace.y+g_fNearPlaneWidth/2)/g_fNearPlaneWidth };
 	float  depth = TexDepthMap.SampleLevel( LinearSampler, ShadowTexC, 0 );
-    return float4(depth,depth,depth,1);
+    return float4(depth,depth,depth,0);
 }
 
 
 float4 RenderAxisPS(VS_OUT1 infragm, uniform int axis_dir) : SV_Target0	//axis_dir 0:X, 1:Y, 2:Z
 {
 	if( axis_dir == 0 )
-		return float4(0,1,0,1);
+		return float4(0,1,0,0);
 	else if( axis_dir == 1 )
-		return float4(0,0,1,1);
+		return float4(0,0,1,0);
 	else if( axis_dir == 2 )
-		return float4(1,0,0,1);
+		return float4(1,0,0,0);
     else
-		return float4(1,1,1,1);
+		return float4(1,1,1,0);
 }
 
 float4 RenderFrustumPS(VS_OUT1 infragm) : SV_Target0
 {
-    return float4( 0,0.2,0.8,1);
+    return float4( 0,0.2,0.8,0);
 }
 
 technique10 RenderLight
