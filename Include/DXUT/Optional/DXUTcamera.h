@@ -99,6 +99,7 @@ class CBaseCamera
 {
 public:
     CBaseCamera();
+	CBaseCamera &operator=( const CBaseCamera &parCam );
 
     // Call these from client and use Get*Matrix() to read new matrices
     virtual LRESULT HandleMessages( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
@@ -241,6 +242,7 @@ class CModelViewerCamera : public CBaseCamera
 {
 public:
     CModelViewerCamera();
+	CModelViewerCamera &operator=( const CModelViewerCamera &parCam );
 
     // Call these from client and use Get*Matrix() to read new matrices
     virtual LRESULT HandleMessages( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
