@@ -32,34 +32,21 @@ public:
 	HRESULT OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *pSwapChain, const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, void* pUserContext );
 	void	OnD3D10SwapChainReleasing( void* pUserContext );
 	void	OnD3D10DestroyDevice();
-	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
+	void	OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef );
 	HRESULT    CreateShader(ID3D10Device *pDev10);
 	~Widget3D(){};
 	
 	SSMap	*m_pSsmap;
     
-	void SetLightSize( float light_size ){ m_fLightSize = light_size; }
-    void SetLightZn( float light_zn ){ m_fCtrledLightZn = light_zn; }
-    void SetLightZf( float light_zf ){ m_fCtrledLightZf = light_zf; }
-    void SetLightFov( float light_fov ){ m_fCtrledLightFov = light_fov; }
-	void SetLightPos( D3DXVECTOR3 vLight ){ m_vLight = vLight; }
-
 	bool  m_bShaderChanged;
 private:
-	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
-	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
-	void	DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize );
-	void	DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize );
+	void	DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef );
+	void	DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef );
+	void	DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef );
+	void	DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef );
 
 	ID3D10Effect				*m_pEffect;
 	ID3D10RasterizerState		*m_pRenderState;
 
 	D3DXVECTOR3 m_vLight;
-	float m_fLightSize;
-	float m_fCtrledLightZn;
-	float m_fCtrledLightZf;
-	float m_fCtrledLightFov;
-
-
-
 };

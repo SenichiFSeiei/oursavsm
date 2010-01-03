@@ -30,7 +30,7 @@ HRESULT Widget3D::OnD3D10CreateDevice( ID3D10Device* pDev10, const DXGI_SURFACE_
 
 }
 
-void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef )
 {
 	HRESULT hr;
 	//Draw Light Source
@@ -41,7 +41,6 @@ void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S
 	D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, par_CameraRef.GetProjMatrix());
 
 	m_vLight = *par_LCameraRef.GetEyePt();
-	m_fLightSize = par_fFilterSize;
 
 	D3DXMATRIX mLightViewInv;
 	D3DXMatrixInverse(&mLightViewInv, NULL, par_LCameraRef.GetViewMatrix());
@@ -76,7 +75,7 @@ void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S
 	m_pEffect->GetTechniqueByName( "RenderLight" )->GetPassByIndex(0)->GetDesc( &PassDesc );   
 	V(pDev10->CreateInputLayout( layout,1, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &pVertexLayout ));
 
-	float FilterSize = par_fFilterSize * 5;
+	float FilterSize = par_LCameraRef.GetLightSize() * 5;
 
 	SVertexTexcoords frontvertices[6] =
 	{
@@ -135,7 +134,7 @@ void Widget3D::DrawLightSource( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S
 	SAFE_RELEASE(m_pRenderState);
 	
 }
-void Widget3D::DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+void Widget3D::DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef )
 {
 	HRESULT hr;
 		//Draw Light Source
@@ -179,7 +178,7 @@ void Widget3D::DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCame
 	m_pEffect->GetTechniqueByName( "RenderAxis" )->GetPassByName("X")->GetDesc( &PassDesc );   
 	V(pDev10->CreateInputLayout( layout,1, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &pVertexLayout ));
 
-	float FilterSize = par_fFilterSize * 5;
+	float FilterSize = par_LCameraRef.GetLightSize() * 5;
 
 	SVertexTexcoords axisvertices[6] =
 	{
@@ -225,7 +224,7 @@ void Widget3D::DrawAxis( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCame
 	
 }
 
-void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef )
 {
 	HRESULT hr;
 		//Draw Light Source
@@ -273,8 +272,6 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 	float w = mat_light_proj._11;
 	float light_zn = par_LCameraRef.GetNearClip();
 	float light_zf = par_LCameraRef.GetFarClip();
-	m_fCtrledLightZn = light_zn;
-	m_fCtrledLightZf = light_zf;
 
 	float near_plane_width = 2*light_zn/w;
 	float far_plane_width = near_plane_width * light_zf / light_zn;
@@ -345,7 +342,7 @@ void Widget3D::DrawFrustum( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTC
 	
 }
 
-void Widget3D::DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef,float par_fFilterSize )
+void Widget3D::DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef )
 {
 	HRESULT hr;
 	//Draw Near Plane with shadow map
@@ -357,10 +354,11 @@ void Widget3D::DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3U
 	D3DXMatrixMultiply(&mWorldViewProj, &mWorldView, par_CameraRef.GetProjMatrix());
 
 	m_vLight = *par_LCameraRef.GetEyePt();
-	m_fLightSize = par_fFilterSize;
 
-	D3DXMATRIX mLightViewInv;
-	D3DXMatrixInverse(&mLightViewInv, NULL, par_LCameraRef.GetViewMatrix());
+	D3DXMATRIX mLightViewInv, mLightWorldView;
+	D3DXMatrixInverse(&mTmp, NULL, par_LCameraRef.GetWorldMatrix());
+	D3DXMatrixMultiply(&mLightWorldView,&mTmp,par_LCameraRef.GetViewMatrix());
+	D3DXMatrixInverse(&mLightViewInv, NULL, &mLightWorldView);
 	D3DXMATRIX mLightViewInvWorldViewProj;
 	D3DXMatrixMultiply(&mLightViewInvWorldViewProj, &mLightViewInv, &mWorldViewProj);
 	V(m_pEffect->GetVariableByName("mViewProj")->AsMatrix()->SetMatrix((float *)&mLightViewInvWorldViewProj));
@@ -392,15 +390,13 @@ void Widget3D::DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3U
 	m_pEffect->GetTechniqueByName( "RenderLight" )->GetPassByIndex(0)->GetDesc( &PassDesc );   
 	V(pDev10->CreateInputLayout( layout,1, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &pVertexLayout ));
 
-	float FilterSize = par_fFilterSize * 5;
+	float FilterSize = par_LCameraRef.GetLightSize() * 5;
 
 	D3DXMATRIX mat_light_proj = *par_LCameraRef.GetProjMatrix();
 
 	float w = mat_light_proj._11;
 	float light_zn = par_LCameraRef.GetNearClip();
 	float light_zf = par_LCameraRef.GetFarClip();
-	m_fCtrledLightZn = light_zn;
-	m_fCtrledLightZf = light_zf;
 
 	float near_plane_width = 2*light_zn/w;
 	float far_plane_width = near_plane_width * light_zf / light_zn;
@@ -464,7 +460,7 @@ void Widget3D::DrawNearPlane( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3U
 	
 }
 
-void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef, float par_fFilterSize )
+void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRef,S3UTCamera &par_LCameraRef )
 {
 	if( m_bShaderChanged )
 	{
@@ -472,10 +468,10 @@ void Widget3D::OnD3D10FrameRender( ID3D10Device* pDev10,S3UTCamera &par_CameraRe
 		m_bShaderChanged = false;
 	}
 
-	DrawLightSource( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
-	DrawAxis( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
-	DrawNearPlane( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
-	DrawFrustum( pDev10,par_CameraRef,par_LCameraRef, par_fFilterSize );
+	DrawLightSource( pDev10,par_CameraRef,par_LCameraRef );
+	DrawAxis( pDev10,par_CameraRef,par_LCameraRef );
+	DrawNearPlane( pDev10,par_CameraRef,par_LCameraRef );
+	DrawFrustum( pDev10,par_CameraRef,par_LCameraRef );
 }
 
 void Widget3D::OnD3D10DestroyDevice()
