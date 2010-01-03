@@ -29,6 +29,7 @@ public:
 	};
 
 	S3UTCamera():CModelViewerCamera() {m_bIsActive = true; m_bIsControllable = false; };
+	S3UTCamera &operator=( const S3UTCamera &parCam );
 
     virtual void SetProjParams(FLOAT fFOV, FLOAT fAspect, D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
     void SetProjParams(D3DXMATRIX mView, D3DXVECTOR3 vBBox[2]);
