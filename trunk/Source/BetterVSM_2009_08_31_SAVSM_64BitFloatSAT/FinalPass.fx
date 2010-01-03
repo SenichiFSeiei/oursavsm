@@ -2,11 +2,18 @@
 #include "CommonDef.h"
 
 Texture2D<float4> TexFinalResult;
+Texture2D<float4> WidgetResult;
 Texture2D<float4> TexPosInWorld;
 
 float4 FinalPresentQuadPS( QuadVS_Output Input ) : SV_TARGET
 {
-	return TexFinalResult.Load( int3( Input.Pos.x - 0.5, Input.Pos.y - 0.5, 0 ) )/2;
+	float4 widgetClr = WidgetResult.Load( int3( Input.Pos.x - 0.5, Input.Pos.y - 0.5, 0 ) );
+	if( widgetClr.a != 1 /*&& widgetClr.r != 0 && widgetClr.g != 0 && widgetClr.b != 0*/ )
+		return widgetClr;
+	else
+		return TexFinalResult.Load( int3( Input.Pos.x - 0.5, Input.Pos.y - 0.5, 0 ) )/2;
+		
+		
 	int off = 1;
 	float4 result = {0,0,0,0};
 	int effect_num = 0;
