@@ -275,14 +275,14 @@ void	MRTRenderObject::OnD3D10FrameRender(   ID3D10Effect *m_pEffect,
 
 	 pDev10->RSSetViewports(1, &m_Viewport);
  
-	 //Since the entire scene is drawn, we dont need to clear.
-	 //Indeed, these clear incurs a lot of performance hit
+	 //Though these clear incurs a lot of performance hit
+	 //we still need them, otherwise, the geometry info of prev frame remains on those part untouched in the current frame.
 
-	 //float ClearColor[4] = { r, g, b, a };
-     //pDev10->ClearRenderTargetView(m_pRTView0, ClearColor);
-     //pDev10->ClearRenderTargetView(m_pRTView1, ClearColor);
-     //pDev10->ClearRenderTargetView(m_pRTView2, ClearColor);
-     //pDev10->ClearRenderTargetView(m_pRTView3, ClearColor);
+	 float ClearColor[4] = { 0, 0, 0, 1 };
+     pDev10->ClearRenderTargetView(m_pRTView0, ClearColor);
+     pDev10->ClearRenderTargetView(m_pRTView1, ClearColor);
+     pDev10->ClearRenderTargetView(m_pRTView2, ClearColor);
+     pDev10->ClearRenderTargetView(m_pRTView3, ClearColor);
  
 	 pDev10->IASetInputLayout( m_pLayout );
 	 ID3D10EffectTechnique *pTechnique = m_pEffect->GetTechniqueByName( m_pTechniqueName );
