@@ -1,6 +1,7 @@
 #pragma once
 #include <d3d10.h>
 #include "InputBuffer.h"
+#include "CommonDef.h"
 
 class BasicSSMAlgorithm
 {

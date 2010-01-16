@@ -1,45 +1,40 @@
-
-
-front eye
+front	eye
 CastShadow	0
-Position	12.0 60.96 -19.6
-AtPosition	0.0 6.0 1.0
-Size		0.0000
-ZNear		0.100000
-ZFar		500.000000
-FieldOfView 1.04717
-AspectRatio 1.333333
+Position	-1.231158 1.829565 -0.232533
+AtPosition	0.000000 0.349995 1.000000
+Size	0.000000
+ZNear	0.100000
+ZFar	500.000000
+FieldOfView	1.047170
+AspectRatio	1.333333
 
-
-
-
-back light
+back	light
 CastShadow	1
-Position	-0.368096 10.618182 0.01415
-AtPosition	0.0 0.0 1
-Size		0.050000
-ZNear		8.200000
-ZFar		14.000000
-FieldOfView 1.382301
-AspectRatio 1.0
+Position	-0.368096 10.618182 0.014150
+AtPosition	0.000000 0.000000 1.000000
+Size	0.25000
+ZNear	8.200000
+ZFar	14.000000
+FieldOfView	1.382301
+AspectRatio	1.000000
 
-above light
+above	light
 CastShadow	1
 Position	-0.368096 10.618182 1.001415
-AtPosition	0.0 0.0 1
-Size		0.290000
-ZNear		8.200000
-ZFar		14.000000
-FieldOfView 1.382301
-AspectRatio 1.0
+AtPosition	0.000000 0.000000 1.000000
+Size	0.290000
+ZNear	8.200000
+ZFar	14.000000
+FieldOfView	1.382301
+AspectRatio	1.000000
 
-
-above eye
+above	eye
 CastShadow	0
-Position	0.0 60.96 0
-AtPosition	0.0 6.0 1.0
-Size		0.0000
-ZNear		0.100000
-ZFar		500.000000
-FieldOfView 0.5
-AspectRatio 1.333333
+Position	0.000000 60.959999 0.000000
+AtPosition	0.000000 6.000000 1.000000
+Size	0.000000
+ZNear	0.100000
+ZFar	500.000000
+FieldOfView	0.500000
+AspectRatio	1.333333
+

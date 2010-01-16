@@ -91,6 +91,8 @@ struct Biases
 
 //#define DUAL_EVSM
 
+//#define B_DO_DUMP
+
 #include "FirstScript.h"
 
 #endif
