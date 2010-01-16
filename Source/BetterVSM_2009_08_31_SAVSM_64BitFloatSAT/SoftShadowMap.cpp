@@ -636,7 +636,8 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
 
     static bool bSaved = true;
 	static int iidx = 0;
-    if (0)
+    //if (0)
+#ifdef B_DO_DUMP
     {
         bSaved = true;
         ID3D10Texture2D *pTexture = NULL;
@@ -660,7 +661,9 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
 		iidx = iidx%NUM_LIGHT;*/
 
     }
-	if(0)
+#endif
+	//if(0)
+#ifdef B_DO_DUMP
 	{
         ID3D10Texture2D *pTexture = NULL;
         D3D10_TEXTURE2D_DESC textureDesc;
@@ -672,6 +675,7 @@ void SSMap::Render(ID3D10Device *pDev10, S3UTMesh *pMesh, S3UTCamera &g_LCameraR
         pDev10->CopyResource(pTexture,m_pDepthMip2);
 		D3DX10SaveTextureToFile(pTexture, D3DX10_IFF_DDS, L"e:\\DepthMip2.dds");
 	}
+#endif
 
     V(m_pOldRenderState->Apply());
 }

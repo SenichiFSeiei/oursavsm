@@ -308,8 +308,10 @@ void	MRTRenderObject::OnD3D10FrameRender(   ID3D10Effect *m_pEffect,
 						fTime,fElapsedTime,pUserContext );
 
 	 pDev10->OMSetRenderTargets(1, &pOrigRTV, pOrigDSV);
-	 //DumpFrameResult( m_pTexture0,L"e:\\TexPosInWorld.dds",pDev10 );
-	 //DumpFrameResult( m_pTexture1,L"e:\\TexNormalInWorld.dds",pDev10 );
+#ifdef B_DO_DUMP
+	 DumpFrameResult( m_pTexture0,L"e:\\TexPosInWorld.dds",pDev10 );
+	 DumpFrameResult( m_pTexture1,L"e:\\TexNormalInWorld.dds",pDev10 );
+#endif
 
 }
 

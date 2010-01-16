@@ -277,9 +277,10 @@ float est_occ_depth_and_chebshev_ineq_blur( float bias,int light_per_row, float 
 
 
 //closely related to this context, could not be used alone
+
 uint4 SampleSatVSMBilinear( float2 texC )
 {
-	float2 uv_off = frac( texC * DEPTH_RES );
+	float2 uv_off = frac( texC * DEPTH_RES - float2(0.5,0.5) );
 	//uv_off *= float2( 0.5,0.5 );
 	int3   texel_idx = { floor( texC * DEPTH_RES),0 };
 	uint4  depth0 = SatVSM.Load( texel_idx );
@@ -289,6 +290,38 @@ uint4 SampleSatVSMBilinear( float2 texC )
 	
 	uint4  depth_avg = ( depth0 * ( 1 - uv_off.x ) * ( 1 - uv_off.y )  +  depth1 * uv_off.x * ( 1 - uv_off.y ) 
 						+ depth2 * ( 1 - uv_off.x ) * uv_off.y  +  depth3 * uv_off.x * uv_off.y );
+	
+	return depth_avg;	
+} 
+
+
+uint2 SampleSatVSMBilinear2( float2 texC )
+{
+	float2 uv_off = frac( texC * DEPTH_RES - float2(0.5,0.5) );
+	//uv_off *= float2( 0.5,0.5 );
+	int3   texel_idx = int3( floor( texC.x * DEPTH_RES-0.5),floor( texC.y * DEPTH_RES-0.5),0 );
+	uint2  depth0 = SatVSM.Load(int3(texel_idx.x,texel_idx.y,0));
+	uint2  depth1 = SatVSM.Load(int3(texel_idx.x + 1,texel_idx.y,0));
+	uint2  depth2 = SatVSM.Load(int3(texel_idx.x,texel_idx.y + 1,0));
+	uint2  depth3 = SatVSM.Load(int3(texel_idx.x+1,texel_idx.y + 1,0));
+	
+	uint2  depth_avg;
+	depth_avg.x = ( ((float)depth0.x) * ( 1 - uv_off.x ) * ( 1 - uv_off.y )  +  ((float)depth1.x) * uv_off.x * ( 1 - uv_off.y ) 
+						+ ((float)depth2.x) * ( 1 - uv_off.x ) * uv_off.y  +  ((float)depth3.x) * uv_off.x * uv_off.y );
+	
+	depth_avg.y = ( ((float)depth0.y) * ( 1 - uv_off.x ) * ( 1 - uv_off.y )  +  ((float)depth1.y) * uv_off.x * ( 1 - uv_off.y ) 
+						+ ((float)depth2.y) * ( 1 - uv_off.x ) * uv_off.y  +  ((float)depth3.y) * uv_off.x * uv_off.y );
+#ifdef DUMP
+	//FILE *fp = fopen("detail.txt","a");
+	//fprintf(fp,"uv_off:<%f,%f>\n",uv_off.x,uv_off.y);
+	//fprintf(fp,"texel_idx:<%d,%d>\n",texel_idx.x,texel_idx.y);
+	//fprintf(fp,"depth0:<%u,%u>\n",depth0.x,depth0.y);
+	//fprintf(fp,"depth1:<%u,%u>\n",depth1.x,depth1.y);
+	//fprintf(fp,"depth2:<%u,%u>\n",depth2.x,depth2.y);
+	//fprintf(fp,"depth3:<%u,%u>\n",depth3.x,depth3.y);
+	//fprintf(fp,"depth_avg:<%u,%u>\n",depth_avg.x,depth_avg.y);
+	//fclose(fp);
+#endif		
 	
 	return depth_avg;	
 } 
@@ -384,85 +417,103 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 	return Ex;
 }
 
-float est_occ_depth_and_chebshev_ineq_bilinear2( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
+float est_occ_depth_and_chebshev_ineq_aligned( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit,out float occ_depth, out float unocc_part, out float unsure_part )
 {
+	float BBottom = BTop + BRight - BLeft;
 	float lit_bias = 0.00;
-#ifdef EVSM
-	float  expCZ = exp(pixel_linear_z*EXPC);
-#endif
-	float4 moments = {0.0,0.0,0.0,0.0};
-	float  sub_light_size_01 =( BRight - BLeft ) / light_per_row;
+	float4 moments = float4(0.0,0.0,0.0,0.0);
+	float  sub_light_size_01 = 8.0f/1024.0f;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
+	
 	float2 curr_lt = float2( BLeft, BTop );
-	float  BBottom = BTop + ( BRight - BLeft );
-	float2 curr_rb = float2(BRight,BBottom);
-	float2 crd_lt  = float2( curr_lt*DEPTH_RES - float2(0.5,0.5) ); 
-	float2 crd_rb  = float2( curr_rb*DEPTH_RES - float2(0.5,0.5) );
 	
-	uint4  d_lt = SampleSatVSMBilinear( curr_lt );
-	uint4  d_lb = SampleSatVSMBilinear( float2(curr_lt.x, curr_rb.y) );
-
-	uint4  d_rt = SampleSatVSMBilinear( float2(curr_rb.x, curr_lt.y) );
-	uint4  d_rb = SampleSatVSMBilinear( curr_rb );
-	
-	moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( max((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y),1) );
-	float Ex = moments.x;
-	float E_sqr_x = moments.y;
-	float VARx = max(E_sqr_x - Ex * Ex,0.000001);
-	float est_depth = pixel_linear_z - Ex;
-
 	float sum_x = 0, sum_sqr_x = 0;
 	unocc_part = 0.0;
 	unsure_part = 0.0;
-	for( int i = 0; i<light_per_row; ++i )
-	{
-		for( uint j = 0; j<light_per_row; ++j )
-		{
-			float2 crd_lt  = float2( curr_lt*DEPTH_RES - float2(0.5,0.5) ); 
-			float2 crd_rb  = float2( (curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES - float2(0.5,0.5) );
-			
-			uint4  d_lt = SampleSatVSMBilinear( curr_lt );
-			uint4  d_lb = SampleSatVSMBilinear( curr_lt + float2(0,sub_light_size_01) );
-
-			uint4  d_rt = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,0) );
-			uint4  d_rb = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,sub_light_size_01) );
-			
-			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( max((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y),1) );
-			
-			if( moments.y > 1 )
-				unsure_part += 1.0;
-			
-			if( moments.x > pixel_linear_z - 0.001  )
-			{
-				unocc_part += 1.0;
-				sum_x += moments.x;
-				sum_sqr_x += moments.y;
-			}
-				
-			curr_lt.x += sub_light_size_01;
-		}
-		curr_lt.x = BLeft;
-		curr_lt.y += sub_light_size_01;
-	}
+	int idx = 0;
+	float total_area = 0;
+	float test_area = 0;
 	
-	Ex = (Ex * (light_per_row * light_per_row) - sum_x)/((light_per_row * light_per_row)-unocc_part);
+	float2 crd_lt = float2(BLeft,BTop-sub_light_size_01);
+	float2 crd_rb = float2(BLeft,BTop);
+
+	while( crd_rb.y < BBottom )
+	{
+		crd_lt.x = BLeft;
+		crd_lt.y = crd_rb.y;
+		
+		if( crd_lt.y == BTop )
+			crd_rb.y = (floor(crd_lt.y*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+		else
+			crd_rb.y += sub_light_size_01;
+		crd_rb.y = min( crd_rb.y, BBottom );
+		crd_rb.x = crd_lt.x;
+
+
+		while( crd_rb.x < BRight )
+		{
+			if( crd_lt.x == BLeft )
+			{
+				crd_rb.x = (floor(crd_lt.x*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+			}
+			else
+			{
+				crd_rb.x += sub_light_size_01;
+			}
+			crd_rb.x = min( crd_rb.x,BRight );
+#ifdef DUMP
+			FILE *fp = fopen("detail.txt","a");
+			//fprintf(fp,"crd_lt:<%f,%f>   crd_rp:<%f,%f>\n",crd_lt.x,crd_lt.y,crd_rb.x,crd_rb.y);
+#endif		
+			uint2  d_lt = SampleSatVSMBilinear2( crd_lt );
+			uint2  d_lb = SampleSatVSMBilinear2( float2(crd_lt.x,crd_rb.y) );
+
+			uint2  d_rt = SampleSatVSMBilinear2( float2(crd_rb.x,crd_lt.y) );
+			uint2  d_rb = SampleSatVSMBilinear2( crd_rb );
+			
+			moments.x = (d_rb.x - d_rt.x - d_lb.x + d_lt.x) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
+			moments.y = (d_rb.y - d_rt.y - d_lb.y + d_lt.y) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
+#ifdef DUMP
+			fprintf(fp,"moments:<%f,%f>\n",moments.x,moments.y);
+			fclose(fp);
+#endif		
+			
+			//if( pixel_linear_z - moments.x<0 && pixel_linear_z - moments.x > -0.001 )
+			//	unsure_part += 1.0;
+			
+			if( moments.x > pixel_linear_z  )
+				unocc_part += 1.0;
+			else if( moments.y <= 1 )
+			{
+				float this_area = ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
+				sum_x += ( moments.x * this_area );
+				sum_sqr_x += ( moments.y * this_area );
+				total_area += this_area;
+			}
+			test_area += ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
+			crd_lt.x = crd_rb.x;
+			++idx;
+		}
+
+	}
+	float Ex = sum_x / total_area;
 	
 	if( Ex + lit_bias > pixel_linear_z )//according to VSM formula, Ex larger than pixel depth means lit
 		fPartLit = 1.0f;
 	else
 	{
-		E_sqr_x = ( E_sqr_x * (light_per_row * light_per_row) - sum_sqr_x )/((light_per_row * light_per_row)-unocc_part);
-		
+		float E_sqr_x = sum_sqr_x / total_area;
+
 		float VARx = max(E_sqr_x - Ex * Ex,0.000001);
-		float est_depth = pixel_linear_z - Ex;
+		float est_depth = pixel_linear_z - Ex;//too small compared to VARx
 		fPartLit = VARx / (VARx + est_depth * est_depth );
 		occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
-		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
+		float entire_area = (BRight - BLeft)*(BRight - BLeft);
+		fPartLit = (total_area * fPartLit + ( entire_area - total_area ))/entire_area;
 	}
 	return Ex;
 }
-
 
 //external dependency: mLightViewProj, mLightProj, fLightZn, fLightZf, fFilterSize
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
@@ -520,11 +571,11 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		return float4(1,1,0,1);
 	
 	//this is the variable used to control the level of filter area subdivision	
-	int    light_per_row = 2;
+	int    light_per_row = 5;
 	//those stuck in complex depth relationship are subdivided, others dont
 	if( pixel_linear_z + 0.059 < max_depth && pixel_linear_z > min_depth + 0.06 )
 	{
-		light_per_row = 10;
+		light_per_row = 5;
 		light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		//uncomment the line below to see regions subdivided
 		//return float4(1,0,1,1);
@@ -548,12 +599,12 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-	if( light_per_row == 10 )	//slightly increase the subdivision level
-		light_per_row = 10;
+	if( light_per_row == 5 )	//slightly increase the subdivision level
+		light_per_row = 5;
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
-	est_occ_depth_and_chebshev_ineq( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq_aligned( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
