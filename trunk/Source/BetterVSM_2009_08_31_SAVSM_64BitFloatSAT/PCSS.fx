@@ -242,7 +242,7 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 		float2 moments = {0.0,0.0};
 		float2 moments0, moments1, moments2, moments3;
 		
-		int   light_per_row = 20;
+		int   light_per_row = 40;
 		float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 		
 		float2 curr_lt = float2( BLeft, BTop );
@@ -305,7 +305,7 @@ float4 AccurateShadow(float4 vPos, float4 vDiffColor, bool limit_kernel = false,
 	float2 moments = {0.0,0.0};
 	float2 moments0, moments1, moments2, moments3;
 
-	int   light_per_row =20;
+	int   light_per_row =40;
 	float   sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 		
 	float2 curr_lt = float2( BLeft, BTop );
