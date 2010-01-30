@@ -8,21 +8,21 @@ ZFar	500.000000
 FieldOfView	1.047170
 AspectRatio	1.333333
 
-back	light
+above	light
 CastShadow	1
-Position	-0.368096 10.618182 0.014150
+Position	-0.368096 10.618182 1.001415
 AtPosition	0.000000 0.000000 1.000000
-Size	0.25000
+Size	0.250000
 ZNear	8.200000
 ZFar	14.000000
 FieldOfView	1.382301
 AspectRatio	1.000000
 
-above	light
-CastShadow	1
-Position	-0.368096 10.618182 1.001415
+back	eye
+CastShadow	0
+Position	-0.368096 10.618182 0.014150
 AtPosition	0.000000 0.000000 1.000000
-Size	0.290000
+Size	0.10000
 ZNear	8.200000
 ZFar	14.000000
 FieldOfView	1.382301
