@@ -59,8 +59,8 @@ static SSMap ssmap;
 static bool g_bShowUI = true;
 static bool g_bShowLightUI = false;
 static bool g_bMoveCamera = true;
-static float g_fFilterSizeCtrl = 0.09;
-static float g_fFilterSize = 0.09;
+static float g_fFilterSizeCtrl = 0.04;
+static float g_fFilterSize = 0.04;
 static SilhouetteBP g_ABP;
 static SilhouetteBPMSSMKernel g_BPMSSMKernel;
 static StdVSM g_StdVSM;
@@ -734,9 +734,23 @@ HRESULT CALLBACK OnD3D10SwapChainResized( ID3D10Device* pDev10, IDXGISwapChain *
 	{
 		g_pLightLumiBuffer[light_idx]->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
 	}
-	
-	g_pBlendBuffer->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
-	g_pWidgetBuffer->OnD3D10SwapChainResized( rtDesc_scrpos, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
+	D3D10_TEXTURE2D_DESC rtDesc_blend =
+	{
+		pBackBufferSurfaceDesc->Width, //UINT Width;
+		pBackBufferSurfaceDesc->Height, //UINT Height;
+		1,//UINT MipLevels;
+		1,//UINT ArraySize;
+		DXGI_FORMAT_R16G16B16A16_FLOAT,//DXGI_FORMAT Format;
+		//DXGI_FORMAT_R8G8B8A8_UNORM,//DXGI_FORMAT Format;
+		{1, 0}, //DXGI_SAMPLE_DESC SampleDesc;
+		D3D10_USAGE_DEFAULT, //D3D10_USAGE Usage;
+
+		D3D10_BIND_SHADER_RESOURCE | D3D10_BIND_RENDER_TARGET ,//UINT BindFlags;
+		0,//UINT CPUAccessFlags;
+		0,//UINT MiscFlags;
+	};	
+	g_pBlendBuffer->OnD3D10SwapChainResized( rtDesc_blend, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
+	g_pWidgetBuffer->OnD3D10SwapChainResized( rtDesc_blend, pDev10, pSwapChain, pBackBufferSurfaceDesc, pUserContext);
     
 	ssmap.OnWindowResize();
 	g_ScrQuadRender.OnD3D10SwapChainResized(rtDesc_scrpos,pDev10,pSwapChain,pBackBufferSurfaceDesc,pUserContext);
