@@ -11,7 +11,8 @@
 #include "S3UTcamera.h"
 #include "S3UTCameraManager.h"
 #include <algorithm>
-#include <assert.h>
+//#include <assert.h>
+#define assert 
 
 void S3UTCameraManager::ConfigCameras( char *fileName )
 {
