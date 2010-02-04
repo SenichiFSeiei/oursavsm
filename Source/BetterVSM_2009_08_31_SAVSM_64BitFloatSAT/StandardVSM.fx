@@ -97,9 +97,6 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 {
 	float lit_bias = 0.005;
 	float occ_depth_limit = 0.02;
-#ifdef EVSM
-	float  expCZ = exp(pixel_linear_z*EXPC);
-#endif
 	float4 moments = {0.0,0.0,0.0,0.0};
 	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
 	float  rescale = 1/g_NormalizedFloatToSATUINT;
@@ -124,11 +121,7 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 			if( moments.y > 1 )
 				unsure_part += 1.0;
 
-#ifdef EVSM
-			if( moments.x > expCZ + bias )
-#else
 			if( moments.x > pixel_linear_z )
-#endif
 				unocc_part += 1.0;
 			else if( moments.y <= 1 )
 			{
@@ -161,24 +154,16 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 		float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
 
 		float VARx = E_sqr_x - Ex * Ex;
-	#ifdef EVSM
-		float est_depth = expCZ - Ex;
-	#else
 		float est_depth = pixel_linear_z - Ex;
-	#endif
 		fPartLit /= ((light_per_row * light_per_row)-unocc_part-unsure_part);
 		fPartLit = min( fPartLit,VARx / (VARx + est_depth * est_depth ) );
-		//fPartLit = VARx / (VARx + est_depth * est_depth );
-	#ifdef EVSM
-		occ_depth = max( 1,( Ex - fPartLit * expCZ )/( 1 - fPartLit ));
-		occ_depth = log(occ_depth);
-		occ_depth /= EXPC;
-	#else
 		occ_depth = max( occ_depth_limit,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
-	#endif
 		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
 		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
 	}
+	if( light_per_row * light_per_row == unocc_part )
+		fPartLit = 1.0;
+
 	return Ex;
 }
 
@@ -336,6 +321,15 @@ float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, fl
 float est_occ_depth_and_chebshev_ineq_aligned( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit,out float occ_depth, out float unocc_part, out float unsure_part )
 {
 	float BBottom = BTop + BRight - BLeft;
+	/*
+	if( BRight - BLeft < 2/(float)DEPTH_RES )
+	{
+		BLeft = (floor(BLeft*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+		BTop = (floor(BTop*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+		BRight = (floor(BRight*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+		BBottom = (floor(BBottom*DEPTH_RES+0.5)+0.5)/(float)DEPTH_RES;
+	}
+	*/
 	float lit_bias = 0.00;
 	float4 moments = float4(0.0,0.0,0.0,0.0);
 	float  sub_light_size_01 = max((BRight-BLeft)/light_per_row,2.0f/1024.0);
@@ -439,6 +433,7 @@ float est_occ_depth_and_chebshev_ineq_aligned( float bias,int light_per_row, flo
 float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 {
 	float BBottom = BTop + BRight - BLeft;
+
 	float lit_bias = 0.00;
 	float4 moments = float4(0.0,0.0,0.0,0.0);
 	float  light_size_01 = BRight-BLeft;
@@ -466,6 +461,12 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 			//fprintf(fp,"crd_lt:<%f,%f>   crd_rp:<%f,%f>\n",crd_lt.x,crd_lt.y,crd_rb.x,crd_rb.y);
 #endif		
 
+		if( crd_lt.x != BLeft    ) crd_lt.x = (floor(crd_lt.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_lt.y != BTop     ) crd_lt.y = (floor(crd_lt.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_rb.x != BRight   ) crd_rb.x = (floor(crd_rb.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_rb.y != BBottom  ) crd_rb.y = (floor(crd_rb.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		
+		
  		uint2  d_lt = SampleSatVSMBilinear2( crd_lt );
 		uint2  d_lb = SampleSatVSMBilinear2( float2(crd_lt.x,crd_rb.y) );
 
@@ -483,12 +484,20 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 #endif		
 
         float this_area = ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
-        if( moments.x > pixel_linear_z && (qt_entry.x == leave_level || variance<0.0001)  )
+        if( moments.x > pixel_linear_z && (qt_entry.x == leave_level || variance<0.0001 /*|| light_per_row == 1*/))
         {
 			unocc_part += 1.0;
             unocc_area += this_area;
             QTA_idx += qt_entry.y;
             total_area += this_area;
+        }
+        else if( moments.x < pixel_linear_z && (qt_entry.x == leave_level || variance<0.0001 /*|| light_per_row == 1*/ ) )
+        {
+            sum_x += ( moments.x * this_area );
+			sum_sqr_x += ( moments.y * this_area );
+			penu_area += this_area;
+            QTA_idx += qt_entry.y;
+            total_area += this_area;        
         }
 		else 
 		{
@@ -586,10 +595,10 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		}
 	}
 	
-	[branch]if( pixel_linear_z - 0.06 < min_depth ) // completely lit
-		return float4(0,0,1,1);
-	[branch]if( pixel_linear_z - 0.03 * (max_depth-min_depth) > max_depth ) // completely dark
-		return float4(1,1,0,1);
+	//[branch]if( pixel_linear_z - 0.06 < min_depth ) // completely lit
+	//	return float4(0,0,1,1);
+	//[branch]if( pixel_linear_z - 0.03 * (max_depth-min_depth) > max_depth ) // completely dark
+	//	return float4(1,1,0,1);
 	
 	//this is the variable used to control the level of filter area subdivision	
 	int    light_per_row = 1;
@@ -625,7 +634,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
 		
-	est_occ_depth_and_chebshev_ineq_aligned( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq_QT( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
 	[branch]if( fPartLit <= 0.0 )
