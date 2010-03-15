@@ -227,97 +227,6 @@ uint2 SampleSatVSMPoint( float2 texC )
 	return depth;
 } 
 
-float est_occ_depth_and_chebshev_ineq_bilinear( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
-{
-	float lit_bias = 0.00;
-#ifdef EVSM
-	float  expCZ = exp(pixel_linear_z*EXPC);
-#endif
-	float4 moments = {0.0,0.0,0.0,0.0};
-	float  sub_light_size_01 =( BRight - BLeft ) / light_per_row;
-	float  rescale = 1/g_NormalizedFloatToSATUINT;
-	
-	float2 curr_lt = float2( BLeft, BTop );
-	
-	float sum_x = 0, sum_sqr_x = 0;
-	unocc_part = 0.0;
-	unsure_part = 0.0;
-	for( int i = 0; i<light_per_row; ++i )
-	{
-		for( uint j = 0; j<light_per_row; ++j )
-		{
-			float2 crd_lt  = float2( curr_lt*DEPTH_RES - float2(0.5,0.5) ); 
-			float2 crd_rb  = float2( (curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES - float2(0.5,0.5) );
-			
-			uint4  d_lt = SampleSatVSMBilinear( curr_lt );
-			uint4  d_lb = SampleSatVSMBilinear( curr_lt + float2(0,sub_light_size_01) );
-
-			uint4  d_rt = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,0) );
-			uint4  d_rb = SampleSatVSMBilinear( curr_lt + float2(sub_light_size_01,sub_light_size_01) );
-			
-			moments = (d_rb - d_rt - d_lb + d_lt) * rescale / ( max((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y),1) );
-			
-#ifdef EVSM
-			if( moments.y > 10 )
-#else			
-			if( moments.y > 1 )
-#endif
-				unsure_part += 1.0;
-			
-#ifdef EVSM
-			if( moments.x > expCZ + bias )
-#else
-			if( moments.x > pixel_linear_z  )
-#endif
-				unocc_part += 1.0;
-#ifdef EVSM
-			else if( moments.y <= 10 )
-#else
-			else if( moments.y <= 1 )
-#endif
-			{
-				sum_x += moments.x;
-				sum_sqr_x += moments.y;
-			}
-				
-			curr_lt.x += sub_light_size_01;
-			//d_lt = d_rt;
-			//d_lb = d_rb;
-		}
-		curr_lt.x = BLeft;
-		curr_lt.y += sub_light_size_01;
-	}
-	
-	float Ex = sum_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
-	
-	if( Ex + lit_bias > pixel_linear_z )//according to VSM formula, Ex larger than pixel depth means lit
-		fPartLit = 1.0f;
-	else
-	{
-		float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
-
-		float VARx = max(E_sqr_x - Ex * Ex,0.000001);
-	#ifdef EVSM
-		float est_depth = expCZ - Ex;
-	#else
-		float est_depth = pixel_linear_z - Ex;
-	#endif
-		fPartLit = VARx / (VARx + est_depth * est_depth );
-	#ifdef EVSM
-		occ_depth = max( 1,( Ex - fPartLit * expCZ )/( 1 - fPartLit ));
-		occ_depth = log(occ_depth);
-		occ_depth /= EXPC;
-	#else
-		occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
-	#endif
-		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
-		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
-		//if( VARx == 0.0001 )
-		//	fPartLit /= 2;
-	}
-	return Ex;
-}
-
 float est_occ_depth_and_chebshev_ineq_aligned( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit,out float occ_depth, out float unocc_part, out float unsure_part )
 {
 	float BBottom = BTop + BRight - BLeft;
@@ -430,148 +339,6 @@ float est_occ_depth_and_chebshev_ineq_aligned( float bias,int light_per_row, flo
 	return Ex;
 }
 
-#define NUMOFTOTALNODES 85
-#define TREELEVEL 3
-
-float est_occ_depth_and_chebshev_ineq_QT2( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
-{
-float BBottom = BTop + BRight - BLeft;
-
-
-float lit_bias = 0.00;
-float4 moments = float4(0.0,0.0,0.0,0.0);
-float  rescale = 1/g_NormalizedFloatToSATUINT;
-float sum_x = 0, sum_sqr_x = 0;
-unocc_part = 0.0;
-unsure_part = 0.0;
-int idx = 0;
-float total_area = 0;
-float test_area = 0;
-  float unocc_area = 0;
-  float penu_area = 0;
-
-
-  //sample root tree node
-  int   iCurrentOffset = 0; //root node;
-  float2 crd_ct_Start = float2( (BLeft+BRight)/2, (BTop+BBottom)/2 );
-  float  initialFilterSize = BRight-BLeft;
-
-
-  float4 TreeNodeData;
-  float2 crd_ct = crd_ct_Start;
-  float2 crd_lt, crd_rb;
- 
-  //Tree Traversal  
-  bool  bTraversalIsOver = false;
-  
-  while(iCurrentOffset < NUMOFTOTALNODES)
-  {
-    TreeNodeData = QTConstants[iCurrentOffset];
-
-
-    if(TreeNodeData.y < 0.1)//==0
-      bTraversalIsOver = true;
-    else 
-      bTraversalIsOver = false;
-
-
-    crd_ct = crd_ct_Start + initialFilterSize * float2(TreeNodeData.z,TreeNodeData.w);
-    float half_extent = initialFilterSize / (1<<(int)(TreeNodeData.x+1));
-    crd_lt = crd_ct - float2(half_extent,half_extent);
-    crd_rb = crd_ct + float2(half_extent,half_extent);
-
- 	uint2  d_lt = SampleSatVSMBilinear2( crd_lt );
-	uint2  d_lb = SampleSatVSMBilinear2( float2(crd_lt.x,crd_rb.y) );
-
-	uint2  d_rt = SampleSatVSMBilinear2( float2(crd_rb.x,crd_lt.y) );
-	uint2  d_rb = SampleSatVSMBilinear2( crd_rb );
-
-	moments.x = (d_rb.x - d_rt.x - d_lb.x + d_lt.x) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
-	moments.y = (d_rb.y - d_rt.y - d_lb.y + d_lt.y) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
-
-
-    float variance = max(moments.y - moments.x * moments.x,0.000001);
-
-
-    float this_area = ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
-
-
-    bool bGoNextInTree = true;
-
-
-    [branch]if(TreeNodeData.x == TREELEVEL)//leaf level
-    {
-      [branch]if(moments.x < pixel_linear_z)
-      {
-        sum_x += ( moments.x * this_area );
-        sum_sqr_x += ( moments.y * this_area );
-        penu_area += this_area;
-        total_area += this_area;        
-      }
-      else//moments.x >= pixel_linear_z //assumption1: Ignore this part
-      {
-        unocc_part += 1.0;
-        unocc_area += this_area;
-        total_area += this_area;
-      }
-    }
-    else //non-leaf level
-    {
-      if(moments.x < pixel_linear_z && variance < 0.0001) //nearly plane
-      {
-        sum_x += ( moments.x * this_area );
-        sum_sqr_x += ( moments.y * this_area );
-        penu_area += this_area;
-        total_area += this_area;        
-      }
-      else if(moments.x >= pixel_linear_z && variance < 0.0001)//nearly plane
-      {
-        unocc_part += 1.0;
-        unocc_area += this_area;
-        total_area += this_area;
-      }
-      else //go down
-        bGoNextInTree = false;
-    }
-
-
-     //move the tree node!!!
-    [branch]if(bGoNextInTree)
-    {
-      [branch]if(bTraversalIsOver)
-        break;
-      else
-        //move to the next node
-        iCurrentOffset += TreeNodeData.y;              
-    }
-    else//move to the child node
-      iCurrentOffset += 1;
-
-
-  }
-
-
-  float Ex = sum_x / penu_area;
-[branch]if( Ex + lit_bias > pixel_linear_z )//according to VSM formula, Ex larger than pixel depth means lit
-fPartLit = 1.0f;
-else
-{
-float E_sqr_x = sum_sqr_x / penu_area;
-
-
-float VARx = max(E_sqr_x - Ex * Ex,0.000001);
-float est_depth = pixel_linear_z - Ex;//too small compared to VARx
-fPartLit = VARx / (VARx + est_depth * est_depth );
-occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
-occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
-//float entire_area = (BRight - BLeft)*(BRight - BLeft);
-fPartLit = (penu_area * fPartLit + ( total_area - penu_area ))/total_area;
-}
-//if( abs( total_area - unocc_area ) == 0 )
-// fPartLit = 1.0;
-return Ex;
-}
-
 float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 {
 	float BBottom = BTop + BRight - BLeft;
@@ -603,15 +370,18 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 	leave_level = round( log( texelwise_size ) );
 	leave_level = min( 3, leave_level );
 	//this slightly decreases the image quality, discontinuty could be observed at where different subdivid numbers are applied
+	//unless force it here, there is no leave_level == 0 case in the quad_staple scene
 	if( light_per_row == 1 )
-		leave_level = 0;
+		leave_level = 1;
+	float kernel_size = (BRight-BLeft)*DEPTH_RES;
     do{
 		old_QTA_idx = QTA_idx;
-		if( crd_lt.x != BLeft    ) crd_lt.x = (floor(crd_lt.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
-		if( crd_lt.y != BTop     ) crd_lt.y = (floor(crd_lt.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
-		if( crd_rb.x != BRight   ) crd_rb.x = (floor(crd_rb.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
-		if( crd_rb.y != BBottom  ) crd_rb.y = (floor(crd_rb.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
 		
+		if( crd_lt.x != BLeft) crd_lt.x = (floor(crd_lt.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_lt.y != BTop ) crd_lt.y = (floor(crd_lt.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_rb.x != BRight  ) crd_rb.x = (floor(crd_rb.x*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+		if( crd_rb.y != BBottom ) crd_rb.y = (floor(crd_rb.y*DEPTH_RES+0.5)-0.5)/(float)DEPTH_RES;
+	
 		
  		uint2  d_lt = SampleSatVSMBilinear2( crd_lt );
 		uint2  d_lb = SampleSatVSMBilinear2( float2(crd_lt.x,crd_rb.y) );
@@ -620,106 +390,126 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 		uint2  d_rb = SampleSatVSMBilinear2( crd_rb );
 		
 		moments.x = (d_rb.x - d_rt.x - d_lb.x + d_lt.x) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
-		moments.y = (d_rb.y - d_rt.y - d_lb.y + d_lt.y) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
-        
+		
+		uint ui_y = d_rb.y - d_rt.y - d_lb.y + d_lt.y;
+		moments.y = (ui_y) * rescale / ((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y)*DEPTH_RES*DEPTH_RES);
         float variance = max(moments.y - moments.x * moments.x,0.000001);
 
 		//the current area of the node.
         float this_area = ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
-		//planar node that is unoccluded
-        if( moments.x > pixel_linear_z && qt_entry.x != leave_level && variance<0.0001 )
-        {
-            unocc_area += this_area;
-            QTA_idx += qt_entry.y;
-            total_area += this_area;
-        }
-		//planar node that can safely apply vsm formula
-        else if( moments.x < pixel_linear_z && qt_entry.x != leave_level && variance<0.0001 )
-        {
-            sum_x += ( moments.x * this_area );
-			sum_sqr_x += ( moments.y * this_area );
-			penu_area += this_area;
-            QTA_idx += qt_entry.y;
-            total_area += this_area;        
-        }
-		//planar leaf that is unoccluded
-        else if( moments.x > pixel_linear_z && qt_entry.x == leave_level && variance<0.0001 )
-        {
-            unocc_area += this_area;
-            QTA_idx += qt_entry.y;
-            total_area += this_area;
-        }
-		//non-planar leaf that is unoccluded(potentially error, special care).
-		else if( moments.x > pixel_linear_z && qt_entry.x == leave_level && variance>0.0001 )
-        {
-            unocc_area += this_area;
-            QTA_idx += qt_entry.y;
-            total_area += this_area;
 
-			//QTA_idx += qt_entry.y;
-			//int   n = 3;
-			//float result = 0;
-			//float u_step = (crd_lt.x-crd_rb.x)/(float)n;
-			//float v_step = (crd_lt.y-crd_rb.y)/(float)n;
-			//float current_v = crd_lt.y;
-			//for( int i = 0; i<n; ++i )
-			//{
-			//	float current_u = crd_lt.x;
-			//	for( int j = 0; j<n; ++j )
-			//	{
-			//		float cur_depth = DepthMip2.SampleLevel( PointSampler,float2(current_u,current_v),0 );
-			//		if( cur_depth > pixel_linear_z+0.1 )
-			//			result += 1;
-			//		current_u += u_step;
-			//	}
-			//	current_v += v_step;
-			//}
-			//result /= (float)(n*n);
-			//result *= this_area;
-			//pcf_area += this_area;
-			//pcf_visibility += result;
-		}
-		//leaf can safely apply vsm formula, potential condition (moments.x <= pixel_linear_z)
-		//planar leaf ( can safely apply vsm formula )
-		//non-planar leaf ( can safely apply vsm formula ), those with reasonable variance
-		else if( qt_entry.x == leave_level && variance < 0.5 )
+		//non-leaf node
+		if( qt_entry.x != leave_level )
 		{
-            sum_x += ( moments.x * this_area );
-			sum_sqr_x += ( moments.y * this_area );
-			penu_area += this_area;
-            QTA_idx += qt_entry.y;
-            total_area += this_area;
-		}
-		//non-planar leaf with unreasonable variance, error prone, either ignore or use pcf
-		//note pcf only applied on leaf level as node with large variance are subdivided(only planar node gets early process)
-		else if( qt_entry.x == leave_level && variance >= 0.5 )
-		{
-			QTA_idx += qt_entry.y;
-			int   n = 3;
-			float result = 0;
-			float u_step = (crd_lt.x-crd_rb.x)/(float)n;
-			float v_step = (crd_lt.y-crd_rb.y)/(float)n;
-			float current_v = crd_lt.y;
-			for( int i = 0; i<n; ++i )
+			//planar node that is unoccluded
+			if( moments.x > pixel_linear_z && variance<0.0001 )
 			{
-				float current_u = crd_lt.x;
-				for( int j = 0; j<n; ++j )
-				{
-					float cur_depth = DepthMip2.SampleLevel( PointSampler,float2(current_u,current_v),0 );
-					if( cur_depth > pixel_linear_z - 0.0 )
-						result += 1;
-					current_u += u_step;
-				}
-				current_v += v_step;
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
 			}
-			result /= (float)(n*n);
-			result *= this_area;
-			pcf_area += this_area;
-			pcf_visibility += result;
+			//planar node that can safely apply vsm formula
+			else if( moments.x < pixel_linear_z && qt_entry.x != leave_level && variance<0.0001 )
+			{
+				sum_x += ( moments.x * this_area );
+				sum_sqr_x += ( moments.y * this_area );
+				penu_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area; 
+			}
+			else
+				QTA_idx += 1;
 		}
-		//non-planar node
+		//leaf node
 		else
-			QTA_idx += 1;
+		{
+			//planar leaf that is unoccluded
+			if( moments.x > pixel_linear_z && variance<0.0001 )
+			{
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//non-planar leaf that is unoccluded(potentially error, special care).
+			else if( moments.x > pixel_linear_z && variance>0.0001 )
+			{
+/////////////////////////////////////////////////////////////////////////////////////////////
+//				comment the fragment below to involve PCF
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+/////////////////////////////////////////////////////////////////////////////////////////////
+//				uncomment the fragment below to involve PCF
+/*
+				QTA_idx += qt_entry.y;
+				int   n = 3;
+				float result = 0;
+				float u_step = abs(crd_lt.x-crd_rb.x)/(float)(n-1);
+				float v_step = abs(crd_lt.y-crd_rb.y)/(float)(n-1);
+				float current_v = crd_lt.y;
+				for( int i = 0; i<n; ++i )
+				{
+					float current_u = crd_lt.x;
+					for( int j = 0; j<n; ++j )
+					{
+						float cur_depth = DepthMip2.SampleLevel( PointSampler,float2(current_u,current_v),0 );
+						if( cur_depth > pixel_linear_z )
+							result += 1;
+						current_u += u_step;
+					}
+					current_v += v_step;
+				}
+				result /= (float)(n*n);
+				result *= this_area;
+				pcf_area += this_area;
+				pcf_visibility += result;
+*/
+			}
+			//leaf can safely apply vsm formula, potential condition (moments.x <= pixel_linear_z)
+			//planar leaf ( can safely apply vsm formula )
+			//non-planar leaf ( can safely apply vsm formula ), those with reasonable variance
+			else if( variance < 0.5 )
+			{
+				sum_x += ( moments.x * this_area );
+				sum_sqr_x += ( moments.y * this_area );
+				penu_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//non-planar leaf with unreasonable variance, error prone, either ignore or use pcf
+			//note pcf only applied on leaf level as node with large variance are subdivided(only planar node gets early process)
+			else if( qt_entry.x == leave_level && variance >= 0.5 )
+			{
+				QTA_idx += qt_entry.y;
+/////////////////////////////////////////////////////////////////////////////////////////////
+//				uncomment the fragment below to involve PCF
+/*
+				int   n = 3;
+				float result = 0;
+				float u_step = abs(crd_lt.x-crd_rb.x)/(float)(n-1);
+				float v_step = abs(crd_lt.y-crd_rb.y)/(float)(n-1);
+				float current_v = crd_lt.y;
+				for( int i = 0; i<n; ++i )
+				{
+					float current_u = crd_lt.x;
+					for( int j = 0; j<n; ++j )
+					{
+						float cur_depth = DepthMip2.SampleLevel( PointSampler,float2(current_u,current_v),0 );
+						if( cur_depth > pixel_linear_z - 0.0 )
+							result += 1;
+						current_u += u_step;
+					}
+					current_v += v_step;
+				}
+				result /= (float)(n*n);
+				result *= this_area;
+				pcf_area += this_area;
+				pcf_visibility += result;
+*/	
+			}
+			else
+				QTA_idx += qt_entry.y;
+		}
 
         qt_entry = QTConstants[QTA_idx];
         crd_ct = float2(BLeft,BTop) + light_size_01 * float2((qt_entry.z+1)*0.5,(qt_entry.w+1)*0.5);
@@ -752,7 +542,7 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 			fPartLit = (penu_area * fPartLit + ( total_area - penu_area ))/total_area;
 		}
 	}
-	fPartLit = ( fPartLit * total_area + pcf_visibility * pcf_area ) / ( total_area + pcf_area );
+	fPartLit = ( fPartLit * total_area + pcf_visibility/* *pcf_area/pcf_area */ ) / ( total_area + pcf_area );
 	//if( abs( total_area - unocc_area ) == 0 )
 	//	fPartLit = 1.0;
 	return Ex;
@@ -832,8 +622,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	float Zmin = 0, fPartLit = 0, unocc_part = 0, unsure_part = 0;
 	//the estimation below returns the fPartLit, Zmin and unocc_part
 	est_occ_depth_and_chebshev_ineq( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
-	
-	[branch]if( fPartLit <= 0.0 ) return float4(0,0,1,1); // some results in neg fPartLit, due to neg VARx and est_depth^2 larger than VARx, I found all of them are dark
+	//Should comment it back//[branch]if( fPartLit <= 0.0 ) return float4(0,0,1,1); // some results in neg fPartLit, due to neg VARx and est_depth^2 larger than VARx, I found all of them are dark
 	[branch]if( fPartLit >= 1.0 ) return float4(1,1,0,1); // some results in fPartLit > 1, due to neg VARx but est_depth^2 smaller than VARx, I found all of them are lit 
 
 	//estimated the shrinked filter region
@@ -845,30 +634,31 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
 /*	
-	[branch]if( ( BRight - BLeft ) * DEPTH_RES < 10 )
+	[branch]if( ( BRight - BLeft ) * DEPTH_RES < 9 )
 	{
-		//return float4(1,0,0,1);
-		float offset = 0.5/DEPTH_RES;
 		float result = 0;
-		int   width_half = 10;
-		for( int i = -width_half; i <= width_half; ++i )
+		int iSamplePoint = 5;//must be odd number
+		float SampleInterval = ( BRight - BLeft )/(iSamplePoint-1);
+		for( int i = 0; i<iSamplePoint; ++i )
 		{
-			for( int j = -width_half; j <=width_half; ++j )
+			for( int j = 0; j<iSamplePoint; ++j )
 			{
-				float cur_depth = DepthMip2.SampleLevel( LinearSampler, ShadowTexC + float2( offset * i, offset * j ),0 );
+				float2 pcfTexC = float2(BLeft,BTop) + float2(i*SampleInterval,j*SampleInterval);
+				float cur_depth = DepthMip2.SampleLevel( LinearSampler, pcfTexC,0 );
 				if( cur_depth > pixel_linear_z - 0.0 )
 					result += 1;
 			}
 		}
-		result /= ( width_half + width_half + 1 )*( width_half + width_half + 1 );
-		return float4( result, result, result, 1 );
+		result /= (iSamplePoint*iSamplePoint);
+		//if( result < 0.05 )
+			return float4( result, result, result, 1 );
 	}
 */
-	if( light_per_row == 4 )	//slightly increase the subdivision level
+	if( light_per_row == 5 )	//slightly increase the subdivision level
 		light_per_row = 10;
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
 	light_per_row = min( light_per_row, min( BRight - BLeft, BBottom - BTop ) * DEPTH_RES );
-		
+
 	est_occ_depth_and_chebshev_ineq_QT( fMainBias,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 
 	//dont try to remove these 2 branch, otherwise black acne appears
