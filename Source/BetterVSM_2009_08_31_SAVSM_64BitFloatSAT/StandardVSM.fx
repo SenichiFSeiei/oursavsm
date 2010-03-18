@@ -62,6 +62,106 @@ cbuffer cb0 : register(b0)
     float f3rdDepthDelta;
     float f1stDepthDelta;
     float fMainBias;
+	float2 Poisson25[] = {
+		{-0.978698, -0.0884121},
+		{-0.841121, 0.521165},
+		{-0.71746, -0.50322},
+		{-0.702933, 0.903134},
+		{-0.663198, 0.15482},
+		{-0.495102, -0.232887},
+		{-0.364238, -0.961791},
+		{-0.345866, -0.564379},
+		{-0.325663, 0.64037},
+		{-0.182714, 0.321329},
+		{-0.142613, -0.0227363},
+		{-0.0564287, -0.36729},
+		{-0.0185858, 0.918882},
+		{0.0381787, -0.728996},
+		{0.16599, 0.093112},
+		{0.253639, 0.719535},
+		{0.369549, -0.655019},
+		{0.423627, 0.429975},
+		{0.530747, -0.364971},
+		{0.566027, -0.940489},
+		{0.639332, 0.0284127},
+		{0.652089, 0.669668},
+		{0.773797, 0.345012},
+		{0.968871, 0.840449},
+		{0.991882, -0.657338},
+	};
+	float2 Poisson5[] = {
+		{-0.978698, -0.0884121},
+		{-0.0185858, 0.918882},
+		{0.0381787, -0.728996},
+		{0.16599, 0.093112},
+		{0.639332, 0.0284127},
+	};
+	float2 Poisson64[] = {
+		{-0.934812, 0.366741},
+		{-0.918943, -0.0941496},
+		{-0.873226, 0.62389},
+		{-0.8352, 0.937803},
+		{-0.822138, -0.281655},
+		{-0.812983, 0.10416},
+		{-0.786126, -0.767632},
+		{-0.739494, -0.535813},
+		{-0.681692, 0.284707},
+		{-0.61742, -0.234535},
+		{-0.601184, 0.562426},
+		{-0.607105, 0.847591},
+		{-0.581835, -0.00485244},
+		{-0.554247, -0.771111},
+		{-0.483383, -0.976928},
+		{-0.476669, -0.395672},
+		{-0.439802, 0.362407},
+		{-0.409772, -0.175695},
+		{-0.367534, 0.102451},
+		{-0.35313, 0.58153},
+		{-0.341594, -0.737541},
+		{-0.275979, 0.981567},
+		{-0.230811, 0.305094},
+		{-0.221656, 0.751152},
+		{-0.214393, -0.0592364},
+		{-0.204932, -0.483566},
+		{-0.183569, -0.266274},
+		{-0.123936, -0.754448},
+		{-0.0859096, 0.118625},
+		{-0.0610675, 0.460555},
+		{-0.0234687, -0.962523},
+		{-0.00485244, -0.373394},
+		{0.0213324, 0.760247},
+		{0.0359813, -0.0834071},
+		{0.0877407, -0.730766},
+		{0.14597, 0.281045},
+		{0.18186, -0.529649},
+		{0.188208, -0.289529},
+		{0.212928, 0.063509},
+		{0.23661, 0.566027},
+		{0.266579, 0.867061},
+		{0.320597, -0.883358},
+		{0.353557, 0.322733},
+		{0.404157, -0.651479},
+		{0.410443, -0.413068},
+		{0.413556, 0.123325},
+		{0.46556, -0.176183},
+		{0.49266, 0.55388},
+		{0.506333, 0.876888},
+		{0.535875, -0.885556},
+		{0.615894, 0.0703452},
+		{0.637135, -0.637623},
+		{0.677236, -0.174291},
+		{0.67626, 0.7116},
+		{0.686331, -0.389935},
+		{0.691031, 0.330729},
+		{0.715629, 0.999939},
+		{0.8493, -0.0485549},
+		{0.863582, -0.85229},
+		{0.890622, 0.850581},
+		{0.898068, 0.633778},
+		{0.92053, -0.355693},
+		{0.933348, -0.62981},
+		{0.95294, 0.156896},
+	};
 
 };
 
@@ -633,27 +733,31 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	BLeft   = saturate(max( vPosLight.x/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5);		BRight  = saturate(min( vPosLight.x/vPosLight.w+LightWidthPersNorm, 1) * 0.5 + 0.5);
 	BTop = saturate(1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ));	BBottom  = saturate(1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 )); 
 	
-/*	
-	[branch]if( ( BRight - BLeft ) * DEPTH_RES < 9 )
-	{
-		float result = 0;
-		int iSamplePoint = 5;//must be odd number
-		float SampleInterval = ( BRight - BLeft )/(iSamplePoint-1);
-		for( int i = 0; i<iSamplePoint; ++i )
-		{
-			for( int j = 0; j<iSamplePoint; ++j )
-			{
-				float2 pcfTexC = float2(BLeft,BTop) + float2(i*SampleInterval,j*SampleInterval);
-				float cur_depth = DepthMip2.SampleLevel( LinearSampler, pcfTexC,0 );
-				if( cur_depth > pixel_linear_z - 0.0 )
-					result += 1;
-			}
-		}
-		result /= (iSamplePoint*iSamplePoint);
-		//if( result < 0.05 )
-			return float4( result, result, result, 1 );
-	}
-*/
+
+	float linear_avg_occ_depth = (Zmin - fLightZn)/(fLightZf - fLightZn);
+	//[branch]if( ( BRight - BLeft ) * DEPTH_RES < 9 )
+    [branch]if( pixel_linear_z - linear_avg_occ_depth <= 0.06/*(5.0f/g_NormalizedFloatToSATUINT)*/ )
+    {
+        float depth_sample_num = 64;
+	    float2 instant_off = {0.1,0.1};
+        float2 radius_in_pixel = ( BRight - BLeft ) * DEPTH_RES /2;
+        float2 center_coord = ShadowTexC * DEPTH_RES;
+        float num_occlu = 0;
+	    for( uint i = 0; i < depth_sample_num; ++i )
+	    {
+		    float2 offset = Poisson64[i%depth_sample_num];// + instant_off * (i/depth_sample_num);
+		    int2   cur_sample = center_coord + radius_in_pixel * offset;
+    		
+		    float depth = DepthMip2.Load( int3( cur_sample, 0 ) ); 
+		    if( depth + 0.001 > pixel_linear_z )
+		    {
+			    num_occlu += 1.0;
+		    }
+
+	    }
+        float result = num_occlu / depth_sample_num;
+		return float4( result, result, result, 1 );
+    }
 	if( light_per_row == 5 )	//slightly increase the subdivision level
 		light_per_row = 10;
 	//guarantee that the subdivision is not too fine, subarea smaller than a texel would introduce back ance artifact ( subarea len becomes 0  )		
