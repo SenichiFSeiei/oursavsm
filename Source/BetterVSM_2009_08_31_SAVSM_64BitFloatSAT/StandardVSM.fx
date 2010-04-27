@@ -20,6 +20,12 @@ RasterizerState RStateMSAAON
 	MultisampleEnable = FALSE; // performance hit is too high with MSAA for this sample
 };
 
+SamplerComparisonState ShadowSampler
+{
+    ComparisonFunc = LESS;
+    Filter = COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+};
+
 Texture2D<float4> VSMMip2;
 Texture2D<float>  TexDepthMap;
 Texture2D<float4> DepthMip2;
@@ -258,12 +264,126 @@ float est_occ_depth_and_chebshev_ineq( float bias,int light_per_row, float BLeft
 		fPartLit /= ((light_per_row * light_per_row)-unocc_part-unsure_part);
 		fPartLit = min( fPartLit,VARx / (VARx + est_depth * est_depth ) );
 		occ_depth = max( occ_depth_limit,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+        occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
+	}
+	if( light_per_row * light_per_row == unocc_part )
+		fPartLit = 1.0;
+
+	return Ex;
+}
+
+float est_occ_depth_and_chebshev_ineq_hybrid( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
+{
+	float lit_bias = 0.005;
+	float occ_depth_limit = 0.02;
+	float4 moments = float4(0.0,0.0,0.0,0.0);
+	float  sub_light_size_01 = ( BRight - BLeft ) / light_per_row;
+	float  rescale = 1/g_NormalizedFloatToSATUINT;
+	
+	float2 curr_lt = float2( BLeft, BTop );
+	float sum_x = 0, sum_sqr_x = 0;
+	unocc_part = 0.0;
+	unsure_part = 0.0;
+	float pcf_avg_depth = 0;
+	float pcf_avg_blocker = 0;
+
+	for( int i = 0; i<light_per_row; ++i )
+	{
+		uint2 d_lt = SatVSM.Load(int3(round(curr_lt*DEPTH_RES).x,round(curr_lt*DEPTH_RES).y,0));
+		uint2 d_lb = SatVSM.Load(int3(round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES).x,round((curr_lt + float2(0,sub_light_size_01))*DEPTH_RES).y,0));
+		for( uint j = 0; j<light_per_row; ++j )
+		{
+			int2 crd_lt  = int2(round(curr_lt*DEPTH_RES)); 
+			int2 crd_rb = int2(round((curr_lt + float2(sub_light_size_01,sub_light_size_01))*DEPTH_RES));
+
+			uint2  d_rt = SatVSM.Load(int3(crd_rb.x,crd_lt.y,0));
+			uint2  d_rb = SatVSM.Load(int3(crd_rb.x,crd_rb.y,0));
+			moments.x = (d_rb.x - d_rt.x - d_lb.x + d_lt.x) * rescale / ( (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y) );
+			moments.y = (d_rb.y - d_rt.y - d_lb.y + d_lt.y) * rescale / ( (crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y) );
+			float variance = max(moments.y - moments.x * moments.x,0.000001);
+
+			if( moments.y > 1 )
+			{
+				unsure_part += 1.0;
+			}
+
+			if( moments.x > pixel_linear_z )
+			{
+				unocc_part += 1.0;
+				if( variance > 0.00001 )
+				{
+					int   n = 1;
+					float result = 0;
+					int   total_texel = (crd_rb.x - crd_lt.x)*(crd_rb.y-crd_lt.y);
+					for( int i = crd_lt.y; i<crd_rb.y; ++i )
+					{
+						for( int j = crd_lt.x; j<crd_rb.x; ++j )
+						{
+							float cur_depth = DepthMip2.Load( int3(j,i,0) ).x;
+							if( cur_depth < pixel_linear_z&&abs(cur_depth-pixel_linear_z)>0.1 )
+							{
+								pcf_avg_blocker += 1;
+								pcf_avg_depth += cur_depth;
+							}
+						}
+					}	
+				}
+			}
+			else if( moments.y <= 1 )
+			{
+				sum_x += moments.x;
+				sum_sqr_x += moments.y;
+				float Ex = moments.x;
+				float E_sqr_x = moments.y;
+				float VARx = E_sqr_x - Ex * Ex;
+				float est_depth = pixel_linear_z - Ex;
+				if( Ex + lit_bias * 2 > pixel_linear_z )
+					fPartLit += 1;
+				else
+					fPartLit += VARx / (VARx + est_depth * est_depth );
+
+			}
+			
+			curr_lt.x += sub_light_size_01;
+			d_lt = d_rt;
+			d_lb = d_rb;
+		}
+		curr_lt.x = BLeft;
+		curr_lt.y += sub_light_size_01;
+	}
+	
+	float Ex = sum_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
+	if( Ex + lit_bias > pixel_linear_z )
+	{//according to VSM formula, Ex larger than pixel depth means lit
+		fPartLit = 1;// - ( pcf_avg_blocker/(light_per_row * light_per_row) );
+	}
+	else
+	{
+		float E_sqr_x = sum_sqr_x / ((light_per_row * light_per_row)-unocc_part-unsure_part);
+
+		float VARx = E_sqr_x - Ex * Ex;
+		float est_depth = pixel_linear_z - Ex;
+		fPartLit /= ((light_per_row * light_per_row)-unocc_part-unsure_part);
+		fPartLit = min( fPartLit,VARx / (VARx + est_depth * est_depth ) );
+		occ_depth = max( occ_depth_limit,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
 		occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
 		fPartLit = (1 - unocc_part/(light_per_row * light_per_row-unsure_part)) * fPartLit + unocc_part/(light_per_row * light_per_row-unsure_part);
 	}
 	if( light_per_row * light_per_row == unocc_part )
 		fPartLit = 1.0;
 
+	if( pcf_avg_blocker != 0 )
+	{
+		pcf_avg_depth /= pcf_avg_blocker;
+		pcf_avg_depth = pcf_avg_depth*(fLightZf-fLightZn) + fLightZn;
+
+		float partOccPixelCntVSM = (1-fPartLit) * (BRight-BLeft)*(BRight-BLeft)*DEPTH_RES*DEPTH_RES;
+		float percentage_pcf = pcf_avg_blocker/(pcf_avg_blocker+partOccPixelCntVSM);
+		float percentage_vsm = 1 - percentage_pcf;
+		
+		occ_depth = occ_depth * percentage_vsm + pcf_avg_depth * percentage_pcf;
+	}
 	return Ex;
 }
 
@@ -648,7 +768,165 @@ float est_occ_depth_and_chebshev_ineq_QT( float bias,int light_per_row, float BL
 	return Ex;
 }
 
+float est_occ_depth_and_chebshev_ineq_QT1( float bias,int light_per_row, float BLeft, float BRight,float BTop, float pixel_linear_z, out float fPartLit, out float occ_depth, out float unocc_part, out float unsure_part )
 
+{
+    float BBottom = BTop + BRight - BLeft;
+
+	float lit_bias = 0.00;
+	float4 moments = float4(0.0,0.0,0.0,0.0);
+	float  light_size_texel = round(BRight*DEPTH_RES)-round(BLeft*DEPTH_RES);
+	float  rescale = 1/g_NormalizedFloatToSATUINT;
+		
+	float sum_x = 0, sum_sqr_x = 0;
+	unocc_part = 0.0;	unsure_part = 0.0;
+	int idx = 0;
+	int   total_area = 0,//effective total area, except those leaves with very large variance, pcf_area not included 
+		  pcf_area = 0,//area that can not apply vsm formula, should be leaf level area with unreasonable variance OR non-planar leaf appears as not occluding
+		  unocc_area = 0,//area that are sure to be not occluder 
+		  penu_area = 0;//area that can safely apply vsm formula
+	float pcf_visibility = 0;
+	
+	int2 crd_lt = int2(round(BLeft*DEPTH_RES),round(BTop*DEPTH_RES)), 
+         crd_rb = int2(round(BRight*DEPTH_RES),round(BBottom*DEPTH_RES)), 
+         crd_ct = int2(round(DEPTH_RES*(BLeft+BRight)/2), round(DEPTH_RES*(BTop+BBottom)/2 ));
+
+    int QTA_idx = 0, old_QTA_idx = -1, loop_cnt = 0, leave_level = 3;
+    float4 qt_entry = QTConstants[QTA_idx];
+    
+	//Adjust the tree level.
+	//When handling leave smaller than 1 texel, the algorithm produces black noise, even on completely lit area.
+	//I tried to use floor on those integer related operations, and the result is not very good. Round gives very good result on the contrary.
+	float texelwise_size = light_size_texel;
+	texelwise_size = max( texelwise_size, 1 );
+	leave_level = round( log( texelwise_size ) );
+	leave_level = min( 3, leave_level );
+	//this slightly decreases the image quality, discontinuty could be observed at where different subdivid numbers are applied
+	//unless force it here, there is no leave_level == 0 case in the quad_staple scene
+	if( light_per_row == 1 )
+		leave_level = 1;
+	float kernel_size = light_size_texel;
+    do{
+		old_QTA_idx = QTA_idx;
+				
+        uint2  d_lt = SatVSM.Load(int3(crd_lt.x,crd_lt.y,0));//SatSampleSatVSMPoint( crd_lt );
+        uint2  d_lb = SatVSM.Load(int3(crd_lt.x,crd_rb.y,0));//SampleSatVSMPoint( float2(crd_lt.x,crd_rb.y) );
+
+        uint2  d_rt = SatVSM.Load(int3(crd_rb.x,crd_lt.y,0));//SampleSatVSMPoint( float2(crd_rb.x,crd_lt.y) );
+        uint2  d_rb = SatVSM.Load(int3(crd_rb.x,crd_rb.y,0));//SampleSatVSMPoint( crd_rb );
+		
+		moments.x = (d_rb.x - d_rt.x - d_lb.x + d_lt.x) * rescale / (float)((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y));
+		moments.y = (d_rb.y - d_rt.y - d_lb.y + d_lt.y) * rescale / (float)((crd_rb.x - crd_lt.x)*(crd_rb.y - crd_lt.y));
+
+        float variance = max(moments.y - moments.x * moments.x,0.00000001);
+
+		//the current area of the node.
+        int this_area = ( crd_rb.x - crd_lt.x ) * ( crd_rb.y - crd_lt.y );
+
+		//non-leaf node
+		if( qt_entry.x != leave_level )
+		{
+			//planar node that is unoccluded
+			if( moments.x > pixel_linear_z && variance<0.0001 )
+			{
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//planar node that can safely apply vsm formula
+			else if( moments.x < pixel_linear_z && qt_entry.x != leave_level && variance<0.0001 )
+			{
+				sum_x += ( moments.x * this_area );
+				sum_sqr_x += ( moments.y * this_area );
+				penu_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area; 
+			}
+			else
+				QTA_idx += 1;
+		}
+		//leaf node
+		else
+		{
+			//planar leaf that is unoccluded
+			if( moments.x > pixel_linear_z && variance<0.0001 )
+			{
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//non-planar leaf that is unoccluded(potentially error, special care).
+			else if( moments.x > pixel_linear_z && variance>0.0001 )
+			{
+/////////////////////////////////////////////////////////////////////////////////////////////
+//				comment the fragment below to involve PCF
+				unocc_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//leaf can safely apply vsm formula, potential condition (moments.x <= pixel_linear_z)
+			//planar leaf ( can safely apply vsm formula )
+			//non-planar leaf ( can safely apply vsm formula ), those with reasonable variance
+			else if( variance < 0.5 )
+			{
+				sum_x += ( moments.x * this_area );
+				sum_sqr_x += ( moments.y * this_area );
+				penu_area += this_area;
+				QTA_idx += qt_entry.y;
+				total_area += this_area;
+			}
+			//non-planar leaf with unreasonable variance, error prone, either ignore or use pcf
+			//note pcf only applied on leaf level as node with large variance are subdivided(only planar node gets early process)
+			else if( qt_entry.x == leave_level && variance >= 0.5 )
+			{
+				QTA_idx += qt_entry.y;
+			}
+			else
+				QTA_idx += qt_entry.y;
+		}
+
+        qt_entry = QTConstants[QTA_idx];
+        crd_ct = int2( round(BLeft*DEPTH_RES + light_size_texel*(qt_entry.z+1)*0.5),
+                       round(BTop*DEPTH_RES  + light_size_texel*(qt_entry.w+1)*0.5) );
+
+        float half_extent = (round(BRight*DEPTH_RES)-round(BLeft*DEPTH_RES)) / ((float)pow(2,1+qt_entry.x));
+        
+        crd_lt = int2( round(crd_ct.x - half_extent),
+                       round(crd_ct.y - half_extent) );
+
+        crd_rb = int2( round(crd_ct.x + half_extent),
+                       round(crd_ct.y + half_extent) );
+        loop_cnt ++;
+    }while(QTA_idx!=old_QTA_idx&&loop_cnt<86);
+	float Ex = 0;
+	if( sum_x == 0 && penu_area == 0 )//no occluder at all
+	{
+		fPartLit = 1.0;
+	}
+	else
+	{
+		Ex = sum_x / penu_area;
+		
+		if( Ex + lit_bias > pixel_linear_z )//according to VSM formula, Ex larger than pixel depth means lit
+			fPartLit = 1.0f;
+		else
+		{
+			float E_sqr_x = sum_sqr_x / penu_area;
+
+			float VARx = E_sqr_x - Ex * Ex;//max(E_sqr_x - Ex * Ex,0.000001);
+			float est_depth = pixel_linear_z - Ex;//too small compared to VARx
+			fPartLit = VARx / (VARx + est_depth * est_depth );
+			occ_depth = max( 0,( Ex - fPartLit * pixel_linear_z )/( 1 - fPartLit ));
+			occ_depth = occ_depth*(fLightZf-fLightZn) + fLightZn;
+			float entire_area = (BRight - BLeft)*(BRight - BLeft);
+			fPartLit = (penu_area * fPartLit + ( total_area - penu_area ))/total_area;
+		}
+	}
+	fPartLit = ( fPartLit * total_area + pcf_visibility/* *pcf_area/pcf_area */ ) / ( total_area + pcf_area );
+	//if( abs( total_area - unocc_area ) == 0 )
+	//	fPartLit = 1.0;
+	return Ex;
+}
 
 //external dependency: mLightViewProj, mLightProj, fLightZn, fLightZf, fFilterSize
 float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_kernel = false, bool use_bias = true)
@@ -678,6 +956,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		   BTop    = 1 -( min( vPosLight.y/vPosLight.w+LightWidthPersNorm,1) * 0.5 + 0.5 ),	BBottom = 1 -( max( vPosLight.y/vPosLight.w-LightWidthPersNorm,-1) * 0.5 + 0.5 ); 
 	
 	//calculate HSM mip level, use HSM to help identify complex depth relationship
+	//this is necessary, as the acceleration is significant around 20% for quad_staple
 	int sub_lev = 4;
 	int sub_len = (LightWidthPersNorm * DEPTH_RES + sub_lev - 1) / sub_lev;
 	int mipL = ceil(log2(sub_len));
@@ -721,7 +1000,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	//Zmin is the estimated occluding depth in light space
 	float Zmin = 0, fPartLit = 0, unocc_part = 0, unsure_part = 0;
 	//the estimation below returns the fPartLit, Zmin and unocc_part
-	est_occ_depth_and_chebshev_ineq( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
+	est_occ_depth_and_chebshev_ineq_hybrid( 0,light_per_row, BLeft, BRight,BTop, pixel_linear_z, fPartLit, Zmin, unocc_part, unsure_part );
 	//Should comment it back//[branch]if( fPartLit <= 0.0 ) return float4(0,0,1,1); // some results in neg fPartLit, due to neg VARx and est_depth^2 larger than VARx, I found all of them are dark
 	[branch]if( fPartLit >= 1.0 ) return float4(1,1,0,1); // some results in fPartLit > 1, due to neg VARx but est_depth^2 smaller than VARx, I found all of them are lit 
 
@@ -735,6 +1014,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 	
 
 	float linear_avg_occ_depth = (Zmin - fLightZn)/(fLightZf - fLightZn);
+    float total_result = 0;
 	//[branch]if( ( BRight - BLeft ) * DEPTH_RES < 9 )
     [branch]if( pixel_linear_z - linear_avg_occ_depth <= 0.05/*(5.0f/g_NormalizedFloatToSATUINT)*/ )
     {
@@ -749,6 +1029,10 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 		    int2   cur_sample = center_coord + radius_in_pixel * offset;
     		
 		    float depth = DepthMip2.Load( int3( cur_sample, 0 ) ); 
+
+            float2 curr_uv = (ShadowTexC/*+offset*/);
+            //total_result += DepthMip2.SampleCmpLevelZero(ShadowSampler,curr_uv, pixel_linear_z);
+            total_result += DepthMip2.SampleLevel(PointSampler,curr_uv,0);
 		    if( depth + 0.001 > pixel_linear_z )
 		    {
 			    num_occlu += 1.0;
@@ -756,6 +1040,7 @@ float4 AccurateShadowIntSATMultiSMP4(float4 vPos, float4 vDiffColor, bool limit_
 
 	    }
         float result = num_occlu / depth_sample_num;
+        //result = total_result / depth_sample_num;
 		return float4( result, result, result, 1 );
     }
 	if( light_per_row == 5 )	//slightly increase the subdivision level
